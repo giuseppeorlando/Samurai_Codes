@@ -30,14 +30,6 @@ struct Simulation_Parameters {
   T    alpha_l_min;
   T    alpha_l_max;
 
-  T x0;
-  T y0;
-  T U0;
-  T U1;
-  T V0;
-  T R;
-  T eps_over_R;
-
   // Numerical parameters
   std::string num_flux_hyp;
 
