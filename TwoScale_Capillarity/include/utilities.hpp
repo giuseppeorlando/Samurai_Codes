@@ -33,7 +33,7 @@ namespace EquationData {
   static constexpr std::size_t P2_INDEX         = M2_INDEX;
   static constexpr std::size_t U_INDEX          = RHO_U_INDEX;
 
-  // Use auxiliary indices also to (potentially) distinguish bewteen the type of relaxation
+  // Use auxiliary indices also to (potentially) distinguish between the type of relaxation
   static constexpr std::size_t PRESSURE_EQUILIBRIUM = 0;
   static constexpr std::size_t LOCAL_LAPLACE        = 1;
 }

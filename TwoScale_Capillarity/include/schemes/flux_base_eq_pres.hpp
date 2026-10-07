@@ -23,7 +23,7 @@
  * Useful enumerators
  */
 namespace EquationData {
-  // Use auxiliary indices also to distinguish bewteen the type of relaxation
+  // Use auxiliary indices also to distinguish between the type of relaxation
   static constexpr std::size_t PRESSURE_EQUILIBRIUM = 0;
   static constexpr std::size_t LOCAL_LAPLACE        = 1;
 }
@@ -438,7 +438,7 @@ namespace samurai {
 
       // Newton cycle diverged
       if(relaxation_applied) {
-        std::cerr << "Netwon method not converged in the relaxation after MUSCL" << std::endl;
+        std::cerr << "Newton method not converged in the relaxation after MUSCL" << std::endl;
         exit(1);
       }
     }

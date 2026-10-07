@@ -121,7 +121,7 @@ namespace samurai {
                 atol_Newton_p_star(atol_Newton_p_star_), rtol_Newton_p_star(rtol_Newton_p_star_),
                 tol_Newton_alpha1_d(tol_Newton_alpha1_d_) {}
 
-  // Compute small-scale volume fraction for the fan through Newton-Rapson method
+  // Compute small-scale volume fraction for the fan through Newton-Raphson method
   //
   template<class Field>
   void GodunovFlux<Field>::solve_alpha1_d_fan(const Number rhs,
@@ -138,7 +138,7 @@ namespace samurai {
           std::abs(dalpha1_d) > this->tol_Newton_alpha1_d*alpha1_d) {
       Newton_iter++;
 
-      // Unmodified Newton-Rapson increment
+      // Unmodified Newton-Raphson increment
       auto dF_dalpha1_d = static_cast<Number>(1.0)/
                           ((static_cast<Number>(1.0) - alpha1_d)*
                            (static_cast<Number>(1.0) - alpha1_d)*
@@ -161,7 +161,7 @@ namespace samurai {
 
       // Newton cycle diverged
       if(Newton_iter == this->max_Newton_iters) {
-        throw std::runtime_error("Netwon method not converged to compute small-scale volume fraction in the fan");
+        throw std::runtime_error("Newton method not converged to compute small-scale volume fraction in the fan");
       }
 
       // Update function for which we seek the zero
@@ -172,7 +172,7 @@ namespace samurai {
     }
   }
 
-  // Compute p* through Newton-Rapson method
+  // Compute p* through Newton-Raphson method
   //
   template<class Field>
   void GodunovFlux<Field>::solve_p_star(const FluxValue<cfg>& qL,
@@ -256,7 +256,7 @@ namespace samurai {
           std::abs(dp_star) > this->atol_Newton_p_star + this->rtol_Newton_p_star*std::abs(p_star)) {
       Newton_iter++;
 
-      // Unmodified Newton-Rapson increment
+      // Unmodified Newton-Raphson increment
       Number dF_p_star;
       if(p_star <= p_bar_L) {
         dF_p_star = c_L*(static_cast<Number>(1.0) - alpha1_d_L)/
@@ -290,7 +290,7 @@ namespace samurai {
 
       // Newton cycle diverged
       if(Newton_iter == this->max_Newton_iters) {
-        throw std::runtime_error("Netwon method not converged to compute p* in the Godunov solver");
+        throw std::runtime_error("Newton method not converged to compute p* in the Godunov solver");
       }
 
       // Update function for which we seek the zero

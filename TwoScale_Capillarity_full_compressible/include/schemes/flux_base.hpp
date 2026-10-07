@@ -466,7 +466,7 @@ namespace samurai {
 
       // Newton cycle diverged
       if(relaxation_applied) {
-        std::cerr << "Netwon method not converged in the relaxation after MUSCL" << std::endl;
+        std::cerr << "Newton method not converged in the relaxation after MUSCL" << std::endl;
         exit(1);
       }
     }

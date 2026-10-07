@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
   sim_param.atol_Newton_p_star = input.value("atol_Newton_p_star", static_cast<Number>(1e-10));
   sim_param.rtol_Newton_p_star = input.value("rtol_Newton_p_star", static_cast<Number>(1e-8));
 
-  // MR paramters
+  // MR parameters
   sim_param.min_level     = input.value("min-level", static_cast<std::size_t>(8));
   sim_param.max_level     = input.value("max-level", static_cast<std::size_t>(8));
   sim_param.MR_param      = input.value("MR_param", static_cast<double>(1e-1));

@@ -173,7 +173,7 @@ private:
            EOS_phase2; // The two variables which take care of the
                        // barotropic EOS to compute the speed of sound
 
-  std::unique_ptr<TestCaseBase<Traits, AuxFields>> test_case; /*!< Auxiliary variable to configurate the test case */
+  std::unique_ptr<TestCaseBase<Traits, AuxFields>> test_case; /*!< Auxiliary variable to configure the test case */
 
   HyperbolicFlux<Field> Hyperbolic_flux; /*!< Auxiliary variable to compute the contribution associated with hyperbolic operator */
   samurai::SurfaceTensionFlux<Field, Field_Vect> SurfaceTension_flux; /*!< Auxiliary variable to compute the contribution associated with surface tension */
@@ -183,7 +183,7 @@ private:
   std::string filename; /*!< Auxiliary variable to store the name of output */
 
   Field conserved_variables; /*!< The variable which stores the conserved variables,
-                                  namely the varialbes for which we solve a PDE system */
+                                  namely the variables for which we solve a PDE system */
   Field conserved_variables_tmp; /*!< Auxiliary field since we are solving a time-dependent PDE */
 
   /*--- Now we declare a bunch of fields which depend from the state, but it is useful
@@ -212,7 +212,7 @@ private:
 
   /**
    * Auxiliary routine to compute normals and curvature
-   * @param update_grad specify if gradient has to be commputed as well (true by default)
+   * @param update_grad specify if gradient has to be computed as well (true by default)
    */
   void update_geometry(const bool update_grad = true);
 
@@ -659,7 +659,7 @@ void TwoScaleCapillarity<dim>::apply_relaxation(auto& relaxation_op) {
 
   // Divergence check outside the loop
   if(global_relaxation_applied) {
-    std::cerr << "Netwon method not converged in the post-hyperbolic relaxation" << std::endl;
+    std::cerr << "Newton method not converged in the post-hyperbolic relaxation" << std::endl;
     save("_diverged",
          conserved_variables,
          alpha1, dalpha1, grad_alpha1, normal, H,
@@ -805,7 +805,7 @@ void TwoScaleCapillarity<dim>::run(const std::string& num_flux_hyp,
       conserved_variables_old = conserved_variables;
     #endif
 
-    // Solve the hyperbolic + capillarity subsytems
+    // Solve the hyperbolic + capillarity subsystems
     conserved_variables_tmp.resize();
     #ifdef RELAX_RECONSTRUCTION
       update_geometry(false);
@@ -825,7 +825,7 @@ void TwoScaleCapillarity<dim>::run(const std::string& num_flux_hyp,
 
     /*--- Consider the second stage for the second order ---*/
     #ifdef ORDER_2
-      // Solve the hyperbolic + capillarity subsytems
+      // Solve the hyperbolic + capillarity subsystems
       perform_fv_stage(numerical_flux_hyp, numerical_flux_st);
 
       // Complete evaluation before applying relaxation

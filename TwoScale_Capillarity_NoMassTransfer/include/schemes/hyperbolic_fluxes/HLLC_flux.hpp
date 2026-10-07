@@ -93,7 +93,7 @@ namespace samurai {
     Flux<Field>(EOS_phase1_, EOS_phase2_, sigma_,
                 lambda_, atol_Newton_, rtol_Newton_, max_Newton_iters_) {}
 
-  // Implement the auxliary routine that computes the middle state
+  // Implement the auxiliary routine that computes the middle state
   //
   template<class Field>
   FluxValue<typename HLLCFlux<Field>::cfg>

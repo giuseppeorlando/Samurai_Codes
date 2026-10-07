@@ -104,7 +104,7 @@ private:
 
   bool apply_relax; /*!< Choose whether to apply or not the relaxation */
 
-  const bool   mass_transfer;  /*!< Choose wheter to apply or not the mass transfer */
+  const bool   mass_transfer;  /*!< Choose whether to apply or not the mass transfer */
   const Number Hmax;           /*!< Threshold length scale */
   const Number kappa;          /*!< Parameter related to the radius of small-scale droplets */
   const Number alpha1d_max;    /*!< Maximum threshold of small-scale volume fraction */
@@ -133,7 +133,7 @@ private:
   std::string filename; /*!< Auxiliary variable to store the name of output */
 
   Field conserved_variables; /*!< The variable which stores the conserved variables,
-                                  namely the varialbes for which we solve a PDE system */
+                                  namely the variables for which we solve a PDE system */
   Field conserved_variables_tmp; /*!< Auxiliary field since we are solving a time-dependent PDE */
 
   /*--- Now we declare a bunch of fields which depend from the state, but it is useful
@@ -177,7 +177,7 @@ private:
 
   /**
    * Auxiliary routine to compute normals and curvature
-   * @param update_grad specify if gradient has to be commputed as well (true by default)
+   * @param update_grad specify if gradient has to be computed as well (true by default)
    */
   void update_geometry(const bool update_grad = true);
 
@@ -868,7 +868,7 @@ void TwoScaleCapillarity<dim>::apply_relaxation(auto& relaxation_op) {
 
   // Newton cycle diverged
   if(global_relaxation_applied) {
-    std::cerr << "Netwon method not converged in the post-hyperbolic relaxation" << std::endl;
+    std::cerr << "Newton method not converged in the post-hyperbolic relaxation" << std::endl;
     save("_diverged",
          conserved_variables,
          alpha1_bar, dalpha1_bar, grad_alpha1_bar, normal, H_bar,
@@ -942,7 +942,7 @@ void TwoScaleCapillarity<dim>::execute_postprocess(const Number time) {
                               const auto alpha2_bar_loc = static_cast<Number>(1.0) - alpha1_bar_loc;
                               const auto H_bar_loc      = H_bar[cell];
 
-                              // Compue H_lig
+                              // Compute H_lig
                               const auto rho1_loc  = m1_loc/alpha1_loc;
                                                      // TODO: Add a check in case of zero volume fraction
                               const auto rho1d_loc = (alpha1_d_loc > static_cast<Number>(0.0)) ?
@@ -1136,7 +1136,7 @@ void TwoScaleCapillarity<dim>::run(const std::string& num_flux_hyp,
       conserved_variables_old = conserved_variables;
     #endif
 
-    // Solve the hyperbolic + capillarity subsytems
+    // Solve the hyperbolic + capillarity subsystems
     conserved_variables_tmp.resize();
     #ifdef RELAX_RECONSTRUCTION
       update_geometry(false);
@@ -1156,7 +1156,7 @@ void TwoScaleCapillarity<dim>::run(const std::string& num_flux_hyp,
 
     /*--- Consider the second stage for the second order ---*/
     #ifdef ORDER_2
-      // Solve the hyperbolic + capillarity subsytems
+      // Solve the hyperbolic + capillarity subsystems
       perform_fv_stage(numerical_flux_hyp, numerical_flux_st);
 
       // Complete evaluation before applying relaxation

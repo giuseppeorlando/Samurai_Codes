@@ -12,7 +12,7 @@ namespace samurai {
   using namespace EquationData;
 
   /**
-   * Implementation of the surface tensino contribution
+   * Implementation of the surface tension contribution
    */
   template<class Field, class Field_Vect>
   class SurfaceTensionFlux: public Flux<Field> {

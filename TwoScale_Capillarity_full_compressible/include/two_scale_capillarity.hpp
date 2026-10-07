@@ -169,7 +169,7 @@ private:
 
   bool apply_relax; /*!< Choose whether to apply or not the relaxation */
 
-  const bool   mass_transfer; /*!< Choose wheter to apply or not the mass transfer */
+  const bool   mass_transfer; /*!< Choose whether to apply or not the mass transfer */
   const Number alpha_d_max;   /*!< Maximum threshold of small-scale volume fraction */
   const Number alpha_l_min;   /*!< Minimum large-scale volume fraction to identify the mixture region */
   const Number alpha_l_max;   /*!< Maximum large-scale volume fraction to identify the mixture region */
@@ -188,7 +188,7 @@ private:
            EOS_phase_gas; // The two variables which take care of the
                           // barotropic EOS to compute the speed of sound
 
-  std::unique_ptr<TestCaseBase<Traits, AuxFields>> test_case; /*!< Auxiliary variable to configurate the test case */
+  std::unique_ptr<TestCaseBase<Traits, AuxFields>> test_case; /*!< Auxiliary variable to configure the test case */
 
   HyperbolicFlux<Field> Hyperbolic_flux; /*!< Auxiliary variable to compute the contribution associated with hyperbolic operator */
   samurai::SurfaceTensionFlux<Field, Field_Vect> SurfaceTension_flux; /*!< Auxiliary variable to compute the contribution associated with surface tension */
@@ -198,7 +198,7 @@ private:
   std::string filename; /*!< Auxiliary variable to store the name of output */
 
   Field conserved_variables; /*!< The variable which stores the conserved variables,
-                                  namely the varialbes for which we solve a PDE system */
+                                  namely the variables for which we solve a PDE system */
   Field conserved_variables_tmp; /*!< Auxiliary field since we are solving a time-dependent PDE */
 
   /*--- Now we declare a bunch of fields which depend from the state, but it is useful
@@ -236,7 +236,7 @@ private:
 
   /**
    * Auxiliary routine to compute normals and curvature
-   * @param update_grad specify if gradient has to be commputed as well (true by default)
+   * @param update_grad specify if gradient has to be computed as well (true by default)
    */
   void update_geometry(const bool update_grad = true);
 
@@ -842,7 +842,7 @@ void TwoScaleCapillarity<dim>::execute_postprocess(const Number time) {
                               const auto& grad_alpha_d_loc     = aux_fields.grad_alpha_d[cell];
                               const auto& grad_alpha_l_bar_loc = aux_fields.grad_alpha_l_bar[cell];
 
-                              // Compue H_lig
+                              // Compute H_lig
                               if(alpha_l_loc > alpha_l_min && alpha_l_loc < alpha_l_max &&
                                  alpha_d_loc < alpha_d_max) {
                                 local_q.H_lig = std::max(H[cell], local_q.H_lig);
@@ -1065,7 +1065,7 @@ void TwoScaleCapillarity<dim>::run(const std::string& num_flux_hyp,
       conserved_variables_old = conserved_variables;
     #endif
 
-    // Solve the hyperbolic + capillarity subsytems
+    // Solve the hyperbolic + capillarity subsystems
     conserved_variables_tmp.resize();
     #ifdef RELAX_RECONSTRUCTION
       update_geometry(false);
@@ -1085,7 +1085,7 @@ void TwoScaleCapillarity<dim>::run(const std::string& num_flux_hyp,
 
     /*--- Consider the second stage for the second order ---*/
     #ifdef ORDER_2
-      // Solve the hyperbolic + capillarity subsytems
+      // Solve the hyperbolic + capillarity subsystems
       perform_fv_stage(numerical_flux_hyp, numerical_flux_st);
 
       // Complete evaluation before applying relaxation

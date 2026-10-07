@@ -108,7 +108,7 @@ namespace samurai {
                 lambda_, atol_Newton_, rtol_Newton_, max_Newton_iters_),
     atol_Newton_p_star(atol_Newton_p_star_), rtol_Newton_p_star(rtol_Newton_p_star_) {}
 
-  // Compute p* through Newton-Rapson method
+  // Compute p* through Newton-Raphson method
   //
   template<class Field>
   void GodunovFlux<Field>::solve_p_star(const FluxValue<cfg>& qL,
@@ -180,7 +180,7 @@ namespace samurai {
           std::abs(dp_star) > this->atol_Newton_p_star + this->rtol_Newton_p_star*std::abs(p_star)) {
       Newton_iter++;
 
-      // Unmodified Newton-Rapson increment
+      // Unmodified Newton-Raphson increment
       Number dF_p_star;
       if(p_star <= p_L) {
         dF_p_star = c_L/(p0_L - p_star);
@@ -210,7 +210,7 @@ namespace samurai {
 
       // Newton cycle diverged
       if(Newton_iter == this->max_Newton_iters) {
-        throw std::runtime_error("Netwon method not converged to compute p* in the Godunov solver");
+        throw std::runtime_error("Newton method not converged to compute p* in the Godunov solver");
       }
 
       // Update function for which we seek the zero

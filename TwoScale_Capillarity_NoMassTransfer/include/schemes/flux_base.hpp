@@ -192,7 +192,7 @@ namespace samurai {
     const auto inv_rho = static_cast<Number>(1.0)/rho;
     const auto vel_d   = q(RHO_U_INDEX + curr_d)*inv_rho;
 
-    // Multiply the state by the velcoity along the direction of interest
+    // Multiply the state by the velocity along the direction of interest
     res(M1_INDEX) *= vel_d;
     res(M2_INDEX) *= vel_d;
     res(RHO_ALPHA1_INDEX) *= vel_d;
@@ -402,7 +402,7 @@ namespace samurai {
 
       // Newton cycle diverged
       if(relaxation_applied) {
-        std::cerr << "Netwon method not converged in the relaxation after MUSCL" << std::endl;
+        std::cerr << "Newton method not converged in the relaxation after MUSCL" << std::endl;
         exit(1);
       }
     }

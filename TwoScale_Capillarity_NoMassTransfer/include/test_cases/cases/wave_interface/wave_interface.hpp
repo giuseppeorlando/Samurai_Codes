@@ -60,7 +60,7 @@ public:
 
   /**
    * Wave-interface interaction constructor
-   * @param_file name of the parameter files
+   * @param param_file name of the parameter files
    */
   explicit WaveInterface(const std::string& param_file);
 
@@ -93,7 +93,7 @@ private:
   void apply_bcs(Field& conserved_variables);
 
   /**
-   * Compute regularized Heavised
+   * Compute regularized Heaviside
    *
    * @param x x-coordinate
    * @param eps regularization parameter

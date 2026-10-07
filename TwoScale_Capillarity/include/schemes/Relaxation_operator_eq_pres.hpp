@@ -85,7 +85,7 @@ namespace samurai {
 
     /**
      * Set the value of the flag to check whether mass transfer inside relaxation has to be done or not
-     * @param mass_transfer_NR_ flag to check whether mass trasnfer is desired inside relaxation
+     * @param mass_transfer_NR_ flag to check whether mass transfer is desired inside relaxation
      */
     inline void set_mass_transfer_NR(const bool mass_transfer_NR_);
 
@@ -202,7 +202,7 @@ namespace samurai {
                                              // Prepare for mass transfer if desired
                                              const auto rho_loc = m1_loc + m2_loc + m1_d_loc;
 
-                                             // Compute first ordrer integral reminder "specific enthalpy"
+                                             // Compute first order integral remainder "specific enthalpy"
                                              auto alpha2_bar_loc  = static_cast<Number>(1.0) - alpha1_bar_loc;
                                              const auto p_bar_loc = alpha1_bar_loc*p1_loc
                                                                   + alpha2_bar_loc*p2_loc;
