@@ -64,7 +64,7 @@ public:
 
   /**
    * Static bubble constructor
-   * @param_file name of the parameter files
+   * @param_file name of the parameter file
    */
   explicit StaticBubble(const std::string& param_file);
 

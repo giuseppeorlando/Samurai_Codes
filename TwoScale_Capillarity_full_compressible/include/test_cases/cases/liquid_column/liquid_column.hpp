@@ -75,7 +75,7 @@ public:
 
   /**
    * Liquid column constructor
-   * @param param_file name of the parameter files
+   * @param param_file name of the parameter file
    */
   explicit LiquidColumn(const std::string& param_file);
 
