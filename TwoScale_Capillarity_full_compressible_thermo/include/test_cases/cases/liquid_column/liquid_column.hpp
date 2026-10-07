@@ -78,7 +78,7 @@ public:
 
   /**
    * Liquid column constructor
-   * @param_file name of the parameter files
+   * @param param_file name of the parameter file
    */
   explicit LiquidColumn(const std::string& param_file);
 
@@ -108,10 +108,12 @@ private:
                       const Number mod_grad_alpha_l_min);
 
   /**
-   * Attach boundary conditions to the conserved variable field.
+   * Attach boundary conditions to the conserved variable field
+   * and to the auxiliary large-scale volume fraction field.
    *
-   * Left  boundary: inlet BC (prescribed state via Inlet functor).
-   * Right boundary: homogeneous Neumann on all NVARS components.
+   * Left  boundary: inlet BC (prescribed state via Inlet functor)
+   *                 alpha_l = alpha_residual for the auxiliary field.
+   * Right boundary: homogeneous Neumann on all NVARS components (and on alpha_l).
    * @param ctx struct with all conserved and auxiliary fields
    * @param sigma surface tension coefficient
    * @param alpha_residual 'residual' volume fraction
@@ -278,14 +280,14 @@ void LiquidColumn<Traits, AuxFields>::init_variables(Context& ctx,
                               const auto alpha_g_loc   = static_cast<Number>(1.0) - alpha_liq_loc;
                               ctx.conserved_variables[cell](Mg_INDEX) = alpha_g_loc*ctx.aux.rho_g[cell];
 
-                              // Set conserved variable associated with large-scale volume fraction
+                              // Set large-scale volume fraction (non-conservative transported variable)
+                              ctx.conserved_variables[cell](ALPHA_l_INDEX) = ctx.alpha_l[cell];
+
+                              // Set momentum
                               const auto m_liq_loc = ctx.conserved_variables[cell](Ml_INDEX)
                                                    + ctx.conserved_variables[cell](Md_INDEX);
                               const auto rho_loc   = m_liq_loc + ctx.conserved_variables[cell](Mg_INDEX);
 
-                              ctx.conserved_variables[cell](RHO_ALPHA_l_INDEX) = rho_loc*ctx.alpha_l[cell];
-
-                              // Set momentum
                               ctx.conserved_variables[cell](RHO_U_INDEX)     = ctx.conserved_variables[cell](Ml_INDEX)*U1
                                                                              + ctx.conserved_variables[cell](Mg_INDEX)*U0;
                               ctx.conserved_variables[cell](RHO_U_INDEX + 1) = rho_loc*V0;
@@ -316,7 +318,8 @@ void LiquidColumn<Traits, AuxFields>::init_variables(Context& ctx,
                               const auto Y_liq_loc   = m_liq_loc/rho_loc;
                               const auto chi_liq_loc = Y_liq_loc;
                               ctx.conserved_variables[cell](Mliq_Eliq_INDEX) = ctx.conserved_variables[cell](Ml_INDEX)*
-                                                                               (ctx.EOS_phase_liq.e_value_RhoP(ctx.aux.rho_liq[cell], ctx.aux.p_liq[cell]) +
+                                                                               (ctx.EOS_phase_liq.e_value_RhoP(ctx.aux.rho_liq[cell],
+                                                                                                               ctx.aux.p_liq[cell]) +
                                                                                 static_cast<Number>(0.5)*norm2_vel_loc +
                                                                                 sigma/rho_loc*(chi_liq_loc/Y_liq_loc)*
                                                                                 (mod_grad_alpha_l_loc + ctx.aux.Sigma_d[cell]));
@@ -327,7 +330,8 @@ void LiquidColumn<Traits, AuxFields>::init_variables(Context& ctx,
                               const auto Y_g_loc   = static_cast<Number>(1.0) - Y_liq_loc;
                               const auto chi_g_loc = Y_g_loc;
                               ctx.conserved_variables[cell](Mg_Eg_INDEX) = ctx.conserved_variables[cell](Mg_INDEX)*
-                                                                           (ctx.EOS_phase_gas.e_value_RhoP(ctx.aux.rho_g[cell], ctx.aux.p_g[cell]) +
+                                                                           (ctx.EOS_phase_gas.e_value_RhoP(ctx.aux.rho_g[cell],
+                                                                                                           ctx.aux.p_g[cell]) +
                                                                             static_cast<Number>(0.5)*norm2_vel_loc +
                                                                             sigma/rho_loc*(chi_g_loc/Y_g_loc)*
                                                                             (mod_grad_alpha_l_loc + ctx.aux.Sigma_d[cell]));
@@ -379,4 +383,9 @@ void LiquidColumn<Traits, AuxFields>::apply_bcs(Context& ctx,
                                         static_cast<Number>(0.0),
                                         static_cast<Number>(0.0),
                                         static_cast<Number>(0.0))->on(right);
+
+  // Boundary conditions for the auxiliary large-scale volume fraction (employed to compute its gradient),
+  // consistent with those imposed on ALPHA_l_INDEX of the conserved variables
+  samurai::make_bc<Default>(ctx.alpha_l, alpha_residual)->on(left);
+  samurai::make_bc<samurai::Neumann<1>>(ctx.alpha_l, static_cast<Number>(0.0))->on(right);
 }

@@ -15,7 +15,8 @@
 int main(int argc, char* argv[]) {
   using json = nlohmann::json;
 
-  auto& app = samurai::initialize("Finite volume example for the two-scale model with capillarity and full thermodynamics", argc, argv);
+  auto& app = samurai::initialize("Finite volume example for the two-scale model with capillarity and full thermodynamics",
+                                  argc, argv);
 
   std::ifstream ifs("input.json"); // Read a JSON file
   json input = json::parse(ifs);
@@ -57,7 +58,7 @@ int main(int argc, char* argv[]) {
   sim_param.max_Newton_iters = input.value("max_Newton_iters", static_cast<std::size_t>(60));
   sim_param.p_ref            = input.value("p_ref", static_cast<Number>(1e5));
 
-  // MR paramters
+  // MR parameters
   sim_param.min_level     = input.value("min-level", static_cast<std::size_t>(8));
   sim_param.max_level     = input.value("max-level", static_cast<std::size_t>(8));
   sim_param.MR_param      = input.value("MR_param", static_cast<double>(1e-1));
@@ -82,17 +83,19 @@ int main(int argc, char* argv[]) {
 
   app.add_option("--sigma", sim_param.sigma, "Surface tension coefficient")->capture_default_str()->group("Physical parameters");
 
-  app.add_option("--apply_relaxation", sim_param.apply_relaxation, "Apply or not relaxation")->capture_default_str()->group("Physical parameters");
+  app.add_option("--apply_relaxation", sim_param.apply_relaxation,
+                 "Apply or not relaxation")->capture_default_str()->group("Physical parameters");
   app.add_option("--mass_transfer", sim_param.mass_transfer,
                  "Choose whether to perform or not the mass transfer")->capture_default_str()->group("Physical parameters");
   app.add_option("--kappa", sim_param.kappa,
-                 "Small-scale disperse phase raidus with rispect to maximum curvature")->capture_default_str()->group("Physical parameters");
+                 "Small-scale disperse phase radius with respect to maximum curvature")
+                 ->capture_default_str()->group("Physical parameters");
   app.add_option("--Hmax", sim_param.Hmax,
                  "Maximum curvature before activating atomization")->capture_default_str()->group("Physical parameters");
   app.add_option("--alpha_d_max", sim_param.alpha_d_max,
                  "Maximum admitted small-scale volume fraction")->capture_default_str()->group("Physical parameters");
   app.add_option("--alpha_l_min", sim_param.alpha_l_min,
-                 "Maximum effective volume fraction for the mixture region")->capture_default_str()->group("Physical parameters");
+                 "Minimum effective volume fraction for the mixture region")->capture_default_str()->group("Physical parameters");
   app.add_option("--alpha_l_max", sim_param.alpha_l_max,
                  "Maximum effective volume fraction for the mixture region")->capture_default_str()->group("Physical parameters");
 
@@ -102,7 +105,8 @@ int main(int argc, char* argv[]) {
 
   app.add_option("--cfl", sim_param.Courant, "The Courant number")->capture_default_str()->group("Numerical parameters");
 
-  app.add_option("--alpha_residual", sim_param.alpha_residual, "Residual large scale volume fraction")->capture_default_str()->group("Numerical parameters");
+  app.add_option("--alpha_residual", sim_param.alpha_residual,
+                 "Residual large scale volume fraction")->capture_default_str()->group("Numerical parameters");
   app.add_option("--mod_grad_alpha_l_min", sim_param.mod_grad_alpha_l_min,
                  "Tolerance for zero gradient volume fraction")->capture_default_str()->group("Numerical parameters");
 
@@ -115,13 +119,15 @@ int main(int argc, char* argv[]) {
   app.add_option("--max_Newton_iters", sim_param.max_Newton_iters,
                  "Maximum number of Newton iterations")->capture_default_str()->group("Numerical parameters");
   app.add_option("--p_ref", sim_param.p_ref,
-                 "Reference pressure for termination criterion dual-time stepping")->capture_default_str()->group("Numerical parameters");
+                 "Reference pressure for termination criterion dual-time stepping")
+                 ->capture_default_str()->group("Numerical parameters");
 
   // MR parameters
   app.add_option("--min-level", sim_param.min_level, "Minimum level of the AMR")->capture_default_str()->group("AMR parameter");
   app.add_option("--max-level", sim_param.max_level, "Maximum level of the AMR")->capture_default_str()->group("AMR parameter");
   app.add_option("--MR_param", sim_param.MR_param, "Multiresolution parameter")->capture_default_str()->group("AMR parameter");
-  app.add_option("--MR_regularity", sim_param.MR_regularity, "Multiresolution regularity")->capture_default_str()->group("AMR parameter");
+  app.add_option("--MR_regularity", sim_param.MR_regularity,
+                 "Multiresolution regularity")->capture_default_str()->group("AMR parameter");
 
   // Output parameters
   app.add_option("--save-dir", sim_param.save_dir, "Output directory")->capture_default_str()->group("Output parameters");
@@ -149,7 +155,7 @@ int main(int argc, char* argv[]) {
   app.add_option("--c_v_liq", eos_param.c_v_liq, "c_v_liq")->capture_default_str()->group("EOS parameters");
   app.add_option("--gamma_g", eos_param.gamma_g, "gamma_g")->capture_default_str()->group("EOS parameters");
   app.add_option("--pi_infty_g", eos_param.pi_infty_g, "pi_infty_g")->capture_default_str()->group("EOS parameters");
-  app.add_option("--q_infty_g", eos_param.q_infty_liq, "q_infty_g")->capture_default_str()->group("EOS parameters");
+  app.add_option("--q_infty_g", eos_param.q_infty_g, "q_infty_g")->capture_default_str()->group("EOS parameters");
   app.add_option("--c_v_g", eos_param.c_v_g, "c_v_g")->capture_default_str()->group("EOS parameters");
 
   /*--- Create the instance of the class to perform the simulation ---*/

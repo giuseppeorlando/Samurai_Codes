@@ -7,13 +7,13 @@
 #pragma once
 
 /**
- * Implementation of a generic lcass to handle the EOS. It has several
-   pure virtual functions to be implementede for the specific EOS
+ * Implementation of a generic class to handle the EOS. It has several
+   pure virtual functions to be implemented for the specific EOS
  */
 template<typename T = double>
 class EOS {
 public:
-  static_assert(std::is_arithmetic_v<T>, "Template argument EOS not well suited for arithemtic operations");
+  static_assert(std::is_arithmetic_v<T>, "Template argument EOS not well suited for arithmetic operations");
 
   /**
    * Default constructor
@@ -222,28 +222,28 @@ inline T SG_EOS<T>::Gruneisen_Rhoe(const T rho, const T e) const {
   return gamma - static_cast<T>(1.0);
 }
 
-// Auxiliary function to retrive gamma of SG-EOS
+// Auxiliary function to retrieve gamma of SG-EOS
 //
 template<typename T>
 inline T SG_EOS<T>::get_gamma() const {
   return gamma;
 }
 
-// Auxiliary function to retrive pi_infty of SG-EOS
+// Auxiliary function to retrieve pi_infty of SG-EOS
 //
 template<typename T>
 inline T SG_EOS<T>::get_pi_infty() const {
   return pi_infty;
 }
 
-// Auxiliary function to retrive q_infty of SG-EOS
+// Auxiliary function to retrieve q_infty of SG-EOS
 //
 template<typename T>
 inline T SG_EOS<T>::get_q_infty() const {
   return q_infty;
 }
 
-// Auxiliary function to retrive c_v of SG-EOS
+// Auxiliary function to retrieve c_v of SG-EOS
 //
 template<typename T>
 inline T SG_EOS<T>::get_c_v() const {

@@ -16,30 +16,29 @@ namespace EquationData {
   static constexpr std::size_t dim = 2;
 
   // Use auxiliary variables for the indices for the sake of generality
-  static constexpr std::size_t Ml_INDEX          = 0;
-  static constexpr std::size_t Mg_INDEX          = 1;
-  static constexpr std::size_t Md_INDEX          = 2;
-  static constexpr std::size_t RHO_Z_INDEX       = 3;
-  static constexpr std::size_t RHO_ALPHA_l_INDEX = 4;
-  static constexpr std::size_t RHO_U_INDEX       = 5;
-  static constexpr std::size_t Mliq_Eliq_INDEX   = 5 + dim;
-  static constexpr std::size_t Mg_Eg_INDEX       = Mliq_Eliq_INDEX + 1;
-  /* TO DO: An alternative option could be to consider directly the equations for the specifc entropies s1 and s2.
+  static constexpr std::size_t Ml_INDEX        = 0;
+  static constexpr std::size_t Mg_INDEX        = 1;
+  static constexpr std::size_t Md_INDEX        = 2;
+  static constexpr std::size_t RHO_Z_INDEX     = 3;
+  static constexpr std::size_t ALPHA_l_INDEX   = 4;
+  static constexpr std::size_t RHO_U_INDEX     = 5;
+  static constexpr std::size_t Mliq_Eliq_INDEX = 5 + dim;
+  static constexpr std::size_t Mg_Eg_INDEX     = Mliq_Eliq_INDEX + 1;
+  /* TO DO: An alternative option could be to consider directly the equations for the specific entropies s1 and s2.
      This is less non-standard than expected, especially nowadays
      (see, e.g., https://www.sciencedirect.com/science/article/pii/S0021999125001196 or
                  https://www.sciencedirect.com/science/article/pii/S002199912400799X?via%3Dihub).
      Main PRO: The method would be naturally (i.e. by construction) entropy stable.
      Main CONS: Total energy is (in general) not preserved.
-                Moreover, the formulation that we solve is rigourously valid only for regular solutions */
+                Moreover, the formulation that we solve is rigorously valid only for regular solutions */
 
   // Save also the total number of (scalar) variables
   static constexpr std::size_t NVARS = 7 + dim;
 
   // Use auxiliary variables for the indices also for primitive variables for the sake of generality
-  static constexpr std::size_t ALPHA_l_INDEX  = RHO_ALPHA_l_INDEX;
   static constexpr std::size_t U_INDEX        = RHO_U_INDEX;
   static constexpr std::size_t Z_INDEX        = RHO_Z_INDEX;
-  static constexpr std::size_t RHOl_INDEX     = Ml_INDEX; /* NOTE: Maybe reconstruct directly ml, mg */
+  static constexpr std::size_t RHOl_INDEX     = Ml_INDEX;
   static constexpr std::size_t RHOg_INDEX     = Mg_INDEX;
   static constexpr std::size_t ALPHA_2d_INDEX = Md_INDEX;
   static constexpr std::size_t Pl_INDEX       = Mliq_Eliq_INDEX;

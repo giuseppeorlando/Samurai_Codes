@@ -20,9 +20,9 @@ namespace samurai {
     static_assert(Field_Vect::n_comp == Field::dim, "The spatial dimensions between Field_Vect and Field do not match");
 
     using Number = Flux<Field>::Number; // Define the shortcut for the arithmetic type
-    using cfg_st = FluxConfig<SchemeType::NonLinear, Flux<Field>::stencil_size, Field, Field_Vect>; // Shortcut to specify the type of configuration
-                                                                                                    // for the flux (nonlinear in this case
-                                                                                                    // with input_size different than output_size)
+    // Shortcut to specify the type of configuration for the flux
+    // (nonlinear in this case with input_size different than output_size)
+    using cfg_st = FluxConfig<SchemeType::NonLinear, Flux<Field>::stencil_size, Field, Field_Vect>;
 
     /**
      * Class constructor

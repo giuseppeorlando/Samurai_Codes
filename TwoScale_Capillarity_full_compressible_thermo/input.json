@@ -6,10 +6,10 @@
 
  "Tf": 2.5,
 
- "sigma": 1e-2,
+ "sigma": 0.0,
 
  "apply_relaxation": true,
- "mass_transfer": true,
+ "mass_transfer": false,
  "Hmax": 40.0,
  "kappa": 1.0,
  "alpha_d_max": 0.5,

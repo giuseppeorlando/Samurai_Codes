@@ -47,7 +47,7 @@
  * test case is used:
  *   - Adding a new test case never requires modifying the solver.
  *   - Adding a new auxiliary field to the solver means adding one member
- *     to the strcut in the solver constructor — existing test cases
+ *     to the struct in the solver constructor — existing test cases
  *     are unaffected.
  *   - Adding a new scalar parameter means one extra params["key"] = val
  *     line in the solver — existing test cases are unaffected.
@@ -79,7 +79,7 @@ struct SolverContext {
   // -------------------------------------------------------------------------
   // Members (first mandatory, then optional (aux, params)).
   // Some of the mandatory fields can be computed from conserved_variables,
-  // but we consder them as mandatory since they are deeply exploited by the
+  // but we consider them as mandatory since they are deeply exploited by the
   // solver and not only, e.g., in post-processing. As an example,
   // the surface tension operator requires the gradient of the large-scale
   // volume fraction as Field to assemble the operator.
@@ -93,8 +93,8 @@ struct SolverContext {
   // -------------------------------------------------------------------------
   // Auxiliary fields
   // The solver owns all of these; each test case uses what it needs.
-  // TODO: Maybe try to collect this one in an auxilairy struct so as to enhance
-  // both readability and generability (think about it)
+  // TODO: Maybe try to collect this one in an auxiliary struct so as to enhance
+  // both readability and generality (think about it)
   // -------------------------------------------------------------------------
 
   Field_Scalar& alpha_l; /*!< Large-scale volume fraction */
@@ -115,7 +115,7 @@ struct SolverContext {
    * Class constructor
    *
    * @param mesh_ computational mesh
-   * @param conserved_variables varaibles for which we solve the PDE system
+   * @param conserved_variables variables for which we solve the PDE system
    * @param EOS_phase_liq_ liquid phase equation of state
    * @param EOS_phase_gas_ gas phase equation of state
    * @param alpha_l_ large-scale volume fraction
@@ -123,7 +123,7 @@ struct SolverContext {
    * @param normal_ large-scale interface normal
    * @param H_ large-scale curvature
    * @param gradient_ gradient operator
-   * @param divergence_ divergence oeprator
+   * @param divergence_ divergence operator
    * @param aux_ struct with auxiliary fields
    * @param params_ auxiliary scalar parameters
    */

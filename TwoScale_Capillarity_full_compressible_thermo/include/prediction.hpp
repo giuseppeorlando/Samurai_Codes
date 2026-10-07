@@ -95,16 +95,8 @@ inline void TwoScaleCapillarity_prediction_op<dim, TInterval>::operator()(samura
       });
 
       // Bound-preserving prediction for alpha_l
-      auto compute_alpha = [&](const auto& i_) {
-        const auto rho = dest(Ml_INDEX, level + 1, i_)
-                       + dest(Mg_INDEX, level + 1, i_)
-                       + dest(Md_INDEX, level + 1, i_);
-
-        return dest(RHO_ALPHA_l_INDEX, level + 1, i_)/rho;
-      };
-
-      const auto alpha_ii    = compute_alpha(ii);
-      const auto alpha_ii_p1 = compute_alpha(ii + 1);
+      const auto alpha_ii    = dest(ALPHA_l_INDEX, level + 1, ii);
+      const auto alpha_ii_p1 = dest(ALPHA_l_INDEX, level + 1, ii + 1);
       const auto mask_alpha  = (alpha_ii < 0.0 || alpha_ii > 1.0 ||
                                 alpha_ii_p1 < 0.0 || alpha_ii_p1 > 1.0);
       samurai::apply_on_masked(mask_alpha, [&](auto& ie) {

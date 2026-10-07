@@ -13,20 +13,18 @@
 // Specify the use of this namespace where we just store the indices
 using namespace EquationData;
 
-/* TO DO: Modify the configuration of test case for non-isotheral flows (not so trivial a priori) */
-
 /**
  * Default boundary condition
  */
 template<class Field>
 struct Default: public samurai::Bc<Field> {
-  INIT_BC(Default, samurai::Flux<Field>::stencil_size)
+  INIT_BC(Default, samurai::flux_stencil_size)
 
   inline stencil_t get_stencil(constant_stencil_size_t) const override {
     #ifdef ORDER_2
-      return samurai::line_stencil_from<Field::dim, 0, samurai::Flux<Field>::stencil_size>(-1);
+      return samurai::line_stencil_from<Field::dim, 0, samurai::flux_stencil_size>(-1);
     #else
-      return samurai::line_stencil_from<Field::dim, 0, samurai::Flux<Field>::stencil_size>(0);
+      return samurai::line_stencil_from<Field::dim, 0, samurai::flux_stencil_size>(0);
     #endif
   }
 
@@ -74,7 +72,7 @@ auto Inlet(const Field& Q,
     const auto m_liq_loc     = m_l_loc + m_d_loc;
     const auto rho_loc       = m_liq_loc + m_g_loc;
     const auto inv_rho_loc   = static_cast<typename Field::value_type>(1.0)/rho_loc;
-    const auto alpha_l_loc   = Q[cell_in](RHO_ALPHA_l_INDEX)*inv_rho_loc;
+    const auto alpha_l_loc   = Q[cell_in](ALPHA_l_INDEX);
     const auto alpha_d_loc   = alpha_l_loc*m_d_loc/m_l_loc; // TODO: Add a check in case of zero volume fraction
     const auto alpha_liq_loc = alpha_l_loc + alpha_d_loc;
     const auto rho_liq_loc   = m_liq_loc/alpha_liq_loc; // TODO: Add a check in case of zero volume fraction
@@ -116,30 +114,30 @@ auto Inlet(const Field& Q,
 
     // Compute the corresponding ghost state
     xt::xtensor_fixed<typename Field::value_type, xt::xshape<Field::n_comp>> Q_ghost;
-    const auto alpha_g_D       = static_cast<typename Field::value_type>(1.0) - alpha_l_D - alpha_d_D;
-    const auto m_l_D           = alpha_l_D*rho_liq_loc;
-    Q_ghost[Ml_INDEX]          = m_l_D;
-    const auto m_g_D           = alpha_g_D*rho_g_loc;
-    Q_ghost[Mg_INDEX]          = m_g_D;
-    const auto m_d_D           = alpha_d_D*rho_liq_loc;
-    Q_ghost[Md_INDEX]          = m_d_D;
-    Q_ghost[RHO_Z_INDEX]       = Sigma_d_D*std::cbrt(rho_liq_loc*rho_liq_loc);
-    const auto m_liq_D         = m_l_D + m_d_D;
-    const auto rho_D           = m_liq_D + m_g_D;
-    Q_ghost[RHO_ALPHA_l_INDEX] = rho_D*alpha_l_D;
-    Q_ghost[RHO_U_INDEX]       = rho_D*ux_D;
-    Q_ghost[RHO_U_INDEX + 1]   = rho_D*uy_D;
-    const auto inv_rho_D       = static_cast<typename Field::value_type>(1.0)/rho_D;
-    const auto Y_liq_D         = m_liq_D*inv_rho_D;
-    const auto chi_liq_D       = Y_liq_D;
-    Q_ghost[Mliq_Eliq_INDEX]   = m_liq_D*(e_liq_loc +
-                                          static_cast<typename Field::value_type>(0.5)*(ux_D*ux_D + uy_D*uy_D) +
-                                          sigma*inv_rho_D*(chi_liq_D/Y_liq_D)*(mod_grad_alpha_l_loc + Sigma_d_D));
-    const auto Y_g_D           = static_cast<typename Field::value_type>(1.0) - Y_liq_D;
-    const auto chi_g_D         = Y_g_D;
-    Q_ghost[Mg_Eg_INDEX]       = m_g_D*(e_g_loc +
+    const auto alpha_g_D     = static_cast<typename Field::value_type>(1.0) - alpha_l_D - alpha_d_D;
+    const auto m_l_D         = alpha_l_D*rho_liq_loc;
+    Q_ghost[Ml_INDEX]        = m_l_D;
+    const auto m_g_D         = alpha_g_D*rho_g_loc;
+    Q_ghost[Mg_INDEX]        = m_g_D;
+    const auto m_d_D         = alpha_d_D*rho_liq_loc;
+    Q_ghost[Md_INDEX]        = m_d_D;
+    Q_ghost[RHO_Z_INDEX]     = Sigma_d_D*std::cbrt(rho_liq_loc*rho_liq_loc);
+    const auto m_liq_D       = m_l_D + m_d_D;
+    const auto rho_D         = m_liq_D + m_g_D;
+    Q_ghost[ALPHA_l_INDEX]   = alpha_l_D;
+    Q_ghost[RHO_U_INDEX]     = rho_D*ux_D;
+    Q_ghost[RHO_U_INDEX + 1] = rho_D*uy_D;
+    const auto inv_rho_D     = static_cast<typename Field::value_type>(1.0)/rho_D;
+    const auto Y_liq_D       = m_liq_D*inv_rho_D;
+    const auto chi_liq_D     = Y_liq_D;
+    Q_ghost[Mliq_Eliq_INDEX] = m_liq_D*(e_liq_loc +
                                         static_cast<typename Field::value_type>(0.5)*(ux_D*ux_D + uy_D*uy_D) +
-                                        sigma*inv_rho_D*(chi_g_D/Y_g_D)*(mod_grad_alpha_l_loc + Sigma_d_D));
+                                        sigma*inv_rho_D*(chi_liq_D/Y_liq_D)*(mod_grad_alpha_l_loc + Sigma_d_D));
+    const auto Y_g_D         = static_cast<typename Field::value_type>(1.0) - Y_liq_D;
+    const auto chi_g_D       = Y_g_D;
+    Q_ghost[Mg_Eg_INDEX]     = m_g_D*(e_g_loc +
+                                      static_cast<typename Field::value_type>(0.5)*(ux_D*ux_D + uy_D*uy_D) +
+                                      sigma*inv_rho_D*(chi_g_D/Y_g_D)*(mod_grad_alpha_l_loc + Sigma_d_D));
 
     return Q_ghost;
   };

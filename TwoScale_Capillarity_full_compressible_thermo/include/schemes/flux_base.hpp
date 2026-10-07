@@ -18,6 +18,17 @@ namespace samurai {
   using namespace EquationData;
 
   /**
+   * Stencil size of the numerical fluxes. It is defined outside the Flux class
+   * (which can be instantiated only with the field of conserved variables)
+   * so that it can be employed also elsewhere (e.g. boundary conditions for scalar fields)
+   */
+  #ifdef ORDER_2
+    inline constexpr std::size_t flux_stencil_size = 4;
+  #else
+    inline constexpr std::size_t flux_stencil_size = 2;
+  #endif
+
+  /**
    * Generic class to compute the flux between a left and right state
    */
   template<class Field>
@@ -25,12 +36,9 @@ namespace samurai {
   public:
     // Definitions and sanity checks
     static_assert(Field::dim == EquationData::dim, "The spatial dimensions between Field and the parameter list do not match");
-    static_assert(Field::n_comp == EquationData::NVARS, "The number of elements in the state does not correspond to the number of equations");
-    #ifdef ORDER_2
-      static constexpr std::size_t stencil_size = 4;
-    #else
-      static constexpr std::size_t stencil_size = 2;
-    #endif
+    static_assert(Field::n_comp == EquationData::NVARS,
+                  "The number of elements in the state does not correspond to the number of equations");
+    static constexpr std::size_t stencil_size = flux_stencil_size;
 
     using cfg = FluxConfig<SchemeType::NonLinear, stencil_size, Field, Field>;
 
@@ -101,6 +109,7 @@ namespace samurai {
     FluxValue<cfg> res = q;
 
     // Pre-fetch some variables used multiple times in order to exploit possible vectorization
+    const auto alpha_l  = q(ALPHA_l_INDEX);
     const auto m_l      = q(Ml_INDEX);
     const auto m_g      = q(Mg_INDEX);
     const auto m_d      = q(Md_INDEX);
@@ -118,7 +127,7 @@ namespace samurai {
     res(Mg_INDEX) *= vel_d;
     res(Md_INDEX) *= vel_d;
     res(RHO_Z_INDEX) *= vel_d;
-    res(RHO_ALPHA_l_INDEX) *= vel_d;
+    res(ALPHA_l_INDEX) = static_cast<Number>(0.0);
     for(std::size_t d = 0; d < Field::dim; ++d) {
       res(RHO_U_INDEX + d) *= vel_d;
     }
@@ -126,7 +135,6 @@ namespace samurai {
     res(Mg_Eg_INDEX) *= vel_d;
 
     // Compute and add the contribution due to the pressure
-    const auto alpha_l   = q(RHO_ALPHA_l_INDEX)*inv_rho;
     const auto alpha_d   = alpha_l*m_d/m_l; // TODO: Add a check in case of zero volume fraction
     const auto alpha_liq = alpha_l + alpha_d;
 
@@ -149,7 +157,7 @@ namespace samurai {
     const auto chi_liq = Y_liq;
     const auto e_liq   = mliqEliq/m_liq
                        - static_cast<Number>(0.5)*norm2_vel
-                       - sigma*inv_rho*(chi_liq/Y_liq)*(Sigma_d + mod_grad_alpha_l); // TODO: Add a check in case of zero volume fraction
+                       - sigma*inv_rho*(chi_liq/Y_liq)*(Sigma_d + mod_grad_alpha_l);
 
     const auto p_liq   = EOS_phase_liq.pres_value_Rhoe(rho_liq, e_liq);
 
@@ -184,6 +192,7 @@ namespace samurai {
     FluxValue<cfg> prim;
 
     // Pre-fetch some variables used multiple times in order to exploit possible vectorization
+    const auto alpha_l  = cons(ALPHA_l_INDEX);
     const auto m_l      = cons(Ml_INDEX);
     const auto m_g      = cons(Mg_INDEX);
     const auto m_d      = cons(Md_INDEX);
@@ -206,7 +215,6 @@ namespace samurai {
     const auto mod_grad_alpha_l = std::sqrt(mod2_grad_alpha_l);
 
     // Compute primitive variables
-    const auto alpha_l  = cons(RHO_ALPHA_l_INDEX)*inv_rho;
     prim(ALPHA_l_INDEX) = alpha_l;
 
     const auto alpha_d   = alpha_l*m_d/m_l;
@@ -227,7 +235,8 @@ namespace samurai {
     const auto chi_liq = Y_liq;
     const auto e_liq   = mliqEliq/m_liq
                        - static_cast<Number>(0.5)*norm2_vel
-                       - sigma*inv_rho*(chi_liq/Y_liq)*(Sigma_d + mod_grad_alpha_l); // TODO: Add a check in case of zero volume fraction
+                       - sigma*inv_rho*(chi_liq/Y_liq)*(Sigma_d + mod_grad_alpha_l);
+                       // TODO: Add a check in case of zero volume fraction
     prim(Pl_INDEX)     = EOS_phase_liq.pres_value_Rhoe(rho_liq, e_liq);
 
     const auto rho_g = m_g/(static_cast<Number>(1.0) - alpha_liq); // TODO: Add a check in case of zero volume fraction
@@ -237,7 +246,8 @@ namespace samurai {
     const auto chi_g = Y_g;
     const auto e_g   = mgEg/m_g
                      - static_cast<Number>(0.5)*norm2_vel
-                     - sigma*inv_rho*(chi_g/Y_g)*(Sigma_d + mod_grad_alpha_l); // TODO: Add a check in case of zero volume fraction
+                     - sigma*inv_rho*(chi_g/Y_g)*(Sigma_d + mod_grad_alpha_l);
+                     // TODO: Add a check in case of zero volume fraction
     prim(Pg_INDEX)   = EOS_phase_gas.pres_value_Rhoe(rho_g, e_g);
 
     return prim;
@@ -273,7 +283,7 @@ namespace samurai {
     const auto m_liq = m_l + m_d;
     const auto rho   = m_liq + m_g;
 
-    cons(RHO_ALPHA_l_INDEX) = rho*alpha_l;
+    cons(ALPHA_l_INDEX) = alpha_l;
 
     for(std::size_t d = 0; d < Field::dim; ++d) {
       cons(RHO_U_INDEX + d) = rho*prim(U_INDEX + d);
@@ -303,14 +313,16 @@ namespace samurai {
     const auto chi_liq    = Y_liq;
     cons(Mliq_Eliq_INDEX) = m_liq*(e_liq +
                                    static_cast<Number>(0.5)*norm2_vel +
-                                   sigma*inv_rho*(chi_liq/Y_liq)*(Sigma_d + mod_grad_alpha_l)); // TODO: Add a check in case of zero volume fraction
+                                   sigma*inv_rho*(chi_liq/Y_liq)*(Sigma_d + mod_grad_alpha_l));
+                            // TODO: Add a check in case of zero volume fraction
 
     const auto e_g    = EOS_phase_gas.e_value_RhoP(rho_g, p_g);
     const auto Y_g    = static_cast<Number>(1.0) - Y_liq;
     const auto chi_g  = Y_g;
     cons(Mg_Eg_INDEX) = m_g*(e_g +
                              static_cast<Number>(0.5)*norm2_vel +
-                             sigma*inv_rho*(chi_g/Y_g)*(Sigma_d + mod_grad_alpha_l)); // TODO: Add a check in case of zero volume fraction
+                             sigma*inv_rho*(chi_g/Y_g)*(Sigma_d + mod_grad_alpha_l));
+                        // TODO: Add a check in case of zero volume fraction
 
     return cons;
   }

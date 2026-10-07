@@ -168,7 +168,7 @@ private:
 
   bool apply_relax; /*!< Choose whether to apply or not the relaxation */
 
-  const bool   mass_transfer; /*!< Choose wheter to apply or not the mass transfer */
+  const bool   mass_transfer; /*!< Choose whether to apply or not the mass transfer */
   const Number alpha_d_max;   /*!< Maximum threshold of small-scale volume fraction */
   const Number alpha_l_min;   /*!< Minimum large-scale volume fraction to identify the mixture region */
   const Number alpha_l_max;   /*!< Maximum large-scale volume fraction to identify the mixture region */
@@ -186,18 +186,18 @@ private:
   EOS_type EOS_phase_liq,
            EOS_phase_gas; // The two variables which take care of the EOS
 
-  std::unique_ptr<TestCaseBase<Traits, AuxFields>> test_case; /*!< Auxiliary variable to configurate the test case */
+  std::unique_ptr<TestCaseBase<Traits, AuxFields>> test_case; /*!< Auxiliary variable to configure the test case */
 
   HyperbolicFlux<Field> Hyperbolic_flux; /*!< Auxiliary variable to compute the contribution associated with hyperbolic operator */
-  samurai::NonConservativeFlux<Field> NonConservative_flux; /*!< Auxiliary variable to compute the non-conservative hyperbolic operator */
-  samurai::SurfaceTensionFlux<Field, Field_Vect> SurfaceTension_flux; /*!< Auxiliary variable to compute the contribution associated with surface tension */
-  samurai::RelaxationOperator<Field> Relaxation_operator; /*!< Auxiliary variable to compute the contribution associated with source term (relaxation) */
+  samurai::NonConservativeFlux<Field> NonConservative_flux; /*!< Auxiliary variable for the non-conservative hyperbolic operator */
+  samurai::SurfaceTensionFlux<Field, Field_Vect> SurfaceTension_flux; /*!< Auxiliary variable for the surface tension contribution */
+  samurai::RelaxationOperator<Field> Relaxation_operator; /*!< Auxiliary variable for the relaxation source term */
 
   fs::path    path;     /*!< Auxiliary variable to store the output directory */
   std::string filename; /*!< Auxiliary variable to store the name of output */
 
-  Field conserved_variables; /*!< The variable which stores the conserved variables,
-                                  namely the varialbes for which we solve a PDE system */
+  Field conserved_variables; /*!< The variable which stores the variables for which we solve a PDE system
+                                  (conserved variables plus the large-scale volume fraction) */
   Field conserved_variables_tmp; /*!< Auxiliary field since we are solving a time-dependent PDE */
   Field int_energy_variables,
         int_energy_variables_tmp; // Auxiliary fields to move to internal-energy formulation
@@ -231,7 +231,7 @@ private:
 
   /**
    * Auxiliary routine to compute normals and curvature
-   * @param update_grad specify if gradient has to be commputed as well (true by default)
+   * @param update_grad specify if gradient has to be computed as well (true by default)
    */
   void update_geometry(const bool update_grad = true);
 
@@ -274,9 +274,9 @@ private:
   void int2tot(const auto& int_, const auto& grad_alpha_l_loc, auto tot_);
 
   /**
-   * Auxiliary routine to compute large-scale volume fraction from conserved variables
+   * Auxiliary routine to extract large-scale volume fraction from conserved variables
    */
-  void recompute_alpha_l();
+  void extract_alpha_l();
 
   /**
    * Perform the finite volume stage (hyperbolic + capillarity subsystems)
@@ -328,7 +328,7 @@ TwoScaleCapillarity<dim>::TwoScaleCapillarity(const xt::xtensor_fixed<double, xt
   test_case(std::move(tc)),
   Hyperbolic_flux(create_hyperbolic_flux<Field>(sim_param.num_flux_hyp,
                                                 EOS_phase_liq, EOS_phase_gas, sigma)),
-  NonConservative_flux(EOS_phase_liq, EOS_phase_gas, sigma),
+  NonConservative_flux(EOS_phase_liq, EOS_phase_gas, sigma, sim_param.num_flux_hyp == "Rusanov"),
   SurfaceTension_flux(EOS_phase_liq, EOS_phase_gas, sigma),
   Relaxation_operator(EOS_phase_liq, EOS_phase_gas, sigma,
                       sim_param.Hmax, sim_param.kappa,
@@ -368,21 +368,26 @@ TwoScaleCapillarity<dim>::TwoScaleCapillarity(const xt::xtensor_fixed<double, xt
       ctx.params["alpha_residual"] = sim_param.alpha_residual;
       ctx.params["mod_grad_alpha_l_min"] = mod_grad_alpha_l_min;
       test_case->setup(ctx);
+      // Apply boundary conditions before initialization
+      // (so that the initial gradient of alpha_l already employs them)
+      test_case->bc_fn();
       test_case->init_fn();
     }
     else {
       samurai::load(sim_param.restart_file, mesh, conserved_variables,
-                                                  alpha_l, grad_alpha_l, normal, H,
+                                                  grad_alpha_l, normal, H,
                                                   aux_fields.rho_liq, aux_fields.p_liq, aux_fields.T_liq,
                                                   aux_fields.rho_g, aux_fields.p_g, aux_fields.T_g,
                                                   aux_fields.p,
                                                   aux_fields.alpha_d, aux_fields.Sigma_d,
                                                   aux_fields.vel, aux_fields.Mach);
+      alpha_l.resize();
+      extract_alpha_l();
       // TO DO: Likely periodic bcs will not work
-    }
 
-    // Apply boundary conditions
-    test_case->bc_fn();
+      // Apply boundary conditions
+      test_case->bc_fn();
+    }
   }
 
 // Auxiliary routine to create the fields
@@ -530,7 +535,8 @@ TwoScaleCapillarity<dim>::get_max_lambda() {
 
                               // Compute frozen speed of sound
                               // Compute liquid density
-                              const auto alpha_d_loc   = alpha_l_loc*m_d_loc/m_l_loc; // TODO: Add a check in case of zero volume fraction
+                              const auto alpha_d_loc   = alpha_l_loc*m_d_loc/m_l_loc;
+                                                         // TODO: Add a check in case of zero volume fraction
                               const auto alpha_liq_loc = alpha_l_loc + alpha_d_loc;
                               const auto rho_liq_loc   = m_liq_loc/alpha_liq_loc; // TODO: Add a check in case of zero volume fraction
 
@@ -606,13 +612,13 @@ void TwoScaleCapillarity<dim>::check_data(unsigned flag) {
                                     if(val < low_tol) {
                                       std::cerr << cell << std::endl;
                                       std::cerr << "Negative " + name + op << std::endl;
-                                      save("_diverged", conserved_variables, alpha_l, grad_alpha_l);
+                                      save("_diverged", conserved_variables, grad_alpha_l);
                                       exit(1);
                                     }
                                     else if(std::isnan(val)) {
                                       std::cerr << cell << std::endl;
                                       std::cerr << "NaN " + name + op << std::endl;
-                                      save("_diverged", conserved_variables, alpha_l, grad_alpha_l);
+                                      save("_diverged", conserved_variables, grad_alpha_l);
                                       exit(1);
                                     }
                                   };
@@ -628,19 +634,19 @@ void TwoScaleCapillarity<dim>::check_data(unsigned flag) {
                               if(alpha_l_loc < static_cast<Number>(0.0)) {
                                 std::cerr << cell << std::endl;
                                 std::cerr << "Negative volume fraction large-scale liquid " + op << std::endl;
-                                save("_diverged", conserved_variables, alpha_l, grad_alpha_l);
+                                save("_diverged", conserved_variables, grad_alpha_l);
                                 exit(1);
                               }
                               else if(alpha_l_loc > static_cast<Number>(1.0)) {
                                 std::cerr << cell << std::endl;
                                 std::cerr << "Exceeding volume fraction large-scale liquid " + op << std::endl;
-                                save("_diverged", conserved_variables, alpha_l, grad_alpha_l);
+                                save("_diverged", conserved_variables, grad_alpha_l);
                                 exit(1);
                               }
                               else if(std::isnan(alpha_l_loc)) {
                                 std::cerr << cell << std::endl;
                                 std::cerr << "NaN volume fraction large-scale liquid " + op << std::endl;
-                                save("_diverged", conserved_variables, alpha_l, grad_alpha_l);
+                                save("_diverged", conserved_variables, grad_alpha_l);
                                 exit(1);
                               }
 
@@ -677,7 +683,8 @@ void TwoScaleCapillarity<dim>::check_data(unsigned flag) {
                               }
                               const auto mod_grad_alpha_l_loc = std::sqrt(mod2_grad_alpha_l_loc);
 
-                              const auto alpha_d_loc   = alpha_l_loc*m_d_loc/m_l_loc; // TODO: Add a check in case of zero volume fraction
+                              const auto alpha_d_loc   = alpha_l_loc*m_d_loc/m_l_loc;
+                                                         // TODO: Add a check in case of zero volume fraction
                               const auto alpha_liq_loc = alpha_l_loc + alpha_d_loc;
                               const auto rho_liq_loc   = m_liq_loc/alpha_liq_loc; // TODO: Add a check in case of zero volume fraction
                               const auto Sigma_d_loc   = local_conserved_variables(RHO_Z_INDEX)/
@@ -698,7 +705,7 @@ void TwoScaleCapillarity<dim>::check_data(unsigned flag) {
                                 std::cerr << cell << std::endl;
                                 std::cerr << "p_liq_loc_res = " << p_liq_loc << std::endl;
                                 std::cerr << "Non admissible liquid pressure " + op << std::endl;
-                                save("_diverged", conserved_variables, alpha_l, grad_alpha_l);
+                                save("_diverged", conserved_variables, grad_alpha_l);
                                 exit(1);
                               }
 
@@ -721,7 +728,7 @@ void TwoScaleCapillarity<dim>::check_data(unsigned flag) {
                                 std::cerr << cell << std::endl;
                                 std::cerr << "p_g_loc_res = " << p_g_loc << std::endl;
                                 std::cerr << "Non admissible gas pressure " + op << std::endl;
-                                save("_diverged", conserved_variables, alpha_l, grad_alpha_l);
+                                save("_diverged", conserved_variables, grad_alpha_l);
                                 exit(1);
                               }
 
@@ -732,19 +739,14 @@ void TwoScaleCapillarity<dim>::check_data(unsigned flag) {
                         );
 }
 
-// Auxiliary function to compute large-scale volume fraction from conserved variables
+// Auxiliary function to extract large-scale volume fraction from conserved variables
 //
 template<std::size_t dim>
-void TwoScaleCapillarity<dim>::recompute_alpha_l() {
+void TwoScaleCapillarity<dim>::extract_alpha_l() {
   samurai::for_each_cell(mesh,
                          [&](const auto& cell)
                             {
-                              const auto& local_conserved_variables = conserved_variables[cell];
-
-                              alpha_l[cell] = local_conserved_variables(RHO_ALPHA_l_INDEX)/
-                                              (local_conserved_variables(Ml_INDEX) +
-                                               local_conserved_variables(Mg_INDEX) +
-                                               local_conserved_variables(Md_INDEX));
+                              alpha_l[cell] = conserved_variables[cell](ALPHA_l_INDEX);
                             }
                         );
 }
@@ -768,12 +770,12 @@ void TwoScaleCapillarity<dim>::perform_fv_stage(auto& numerical_flux_hyp,
   }
   catch(const std::exception& e) {
     std::cerr << e.what() << std::endl;
-    save("_diverged", conserved_variables, alpha_l, grad_alpha_l);
+    save("_diverged", conserved_variables, grad_alpha_l);
     exit(1);
   }
 
   // Update the large-scale volume fraction gradient
-  recompute_alpha_l();
+  extract_alpha_l();
   update_gradient();
   #ifdef DEBUG
     check_data();
@@ -810,7 +812,7 @@ void TwoScaleCapillarity<dim>::tot2int(const auto& tot_, const auto& grad_alpha_
   const auto m_g_loc = tot_(Mg_INDEX);
   const auto m_d_loc = tot_(Md_INDEX);
 
-  // Compute quantities need to pass to local augmented internal energy
+  // Compute quantities needed to pass to local augmented internal energy
   const auto m_liq_loc   = m_l_loc + m_d_loc;
   const auto rho_loc     = m_liq_loc + m_g_loc;
   const auto inv_rho_loc = static_cast<Number>(1.0)/rho_loc;
@@ -855,7 +857,7 @@ void TwoScaleCapillarity<dim>::int2tot(const auto& int_, const auto& grad_alpha_
   const auto m_g_loc = int_(Mg_INDEX);
   const auto m_d_loc = int_(Md_INDEX);
 
-  // Compute quantities need to pass to total energy
+  // Compute quantities needed to pass to total energy
   const auto m_liq_loc   = m_l_loc + m_d_loc;
   const auto rho_loc     = m_liq_loc + m_g_loc;
   const auto inv_rho_loc = static_cast<Number>(1.0)/rho_loc;
@@ -912,7 +914,7 @@ void TwoScaleCapillarity<dim>::apply_relaxation(auto& relaxation_op) {
       std::cerr << e.what() << std::endl;
       save("_diverged",
            int_energy_variables,
-           alpha_l, dalpha_l, grad_alpha_l, normal, H,
+           dalpha_l, grad_alpha_l, normal, H,
            to_be_relaxed, Newton_iterations);
       exit(1);
     }
@@ -939,7 +941,7 @@ void TwoScaleCapillarity<dim>::apply_relaxation(auto& relaxation_op) {
     std::cerr << "Newton method not converged in the post-hyperbolic relaxation" << std::endl;
     save("_diverged",
          int_energy_variables,
-         alpha_l, dalpha_l, grad_alpha_l, normal, H,
+         dalpha_l, grad_alpha_l, normal, H,
          to_be_relaxed, Newton_iterations);
     exit(1);
   }
@@ -996,12 +998,13 @@ void TwoScaleCapillarity<dim>::execute_postprocess(const Number time) {
                               const auto mgEg_loc     = local_conserved_variables(Mg_Eg_INDEX);
 
                               const auto alpha_l_loc   = alpha_l[cell];
-                              const auto alpha_d_loc   = alpha_l_loc*local_conserved_variables(Md_INDEX)/local_conserved_variables(Ml_INDEX);
+                              const auto alpha_d_loc   = alpha_l_loc*local_conserved_variables(Md_INDEX)/
+                                                         local_conserved_variables(Ml_INDEX);
                               aux_fields.alpha_d[cell] = alpha_d_loc;
 
                               const auto& grad_alpha_l_loc = grad_alpha_l[cell];
 
-                              // Compue H_lig
+                              // Compute H_lig
                               if(alpha_l_loc > alpha_l_min && alpha_l_loc < alpha_l_max &&
                                  alpha_d_loc < alpha_d_max) {
                                 local_q.H_lig = std::max(H[cell], local_q.H_lig);
@@ -1072,7 +1075,7 @@ void TwoScaleCapillarity<dim>::execute_postprocess(const Number time) {
 
                               // Save Mach number for post-processing
                               const auto c_liq_loc  = EOS_phase_liq.c_value_RhoP(rho_liq_loc, p_liq_loc);
-                              const auto c_g_loc    = EOS_phase_gas.c_value_RhoP(rho_g_loc, rho_g_loc);
+                              const auto c_g_loc    = EOS_phase_gas.c_value_RhoP(rho_g_loc, p_g_loc);
                               const auto cf_loc     = std::sqrt(Y_liq_loc*c_liq_loc*c_liq_loc +
                                                                 Y_g_loc*c_g_loc*c_g_loc -
                                                                 static_cast<Number>(2.0/9.0)*sigma*Sigma_d_loc*inv_rho_loc);
@@ -1146,7 +1149,7 @@ void TwoScaleCapillarity<dim>::run(const std::string& num_flux_hyp,
   // Save the initial condition
   const std::string suffix_init = (nfiles != 1) ? "_ite_" + Utilities::unsigned_to_string(0) : "";
   save(suffix_init, conserved_variables,
-                    alpha_l, grad_alpha_l, normal, H,
+                    grad_alpha_l, normal, H,
                     aux_fields.rho_liq, aux_fields.p_liq, aux_fields.T_liq,
                     aux_fields.rho_g, aux_fields.p_g, aux_fields.T_g,
                     aux_fields.p,
@@ -1191,10 +1194,11 @@ void TwoScaleCapillarity<dim>::run(const std::string& num_flux_hyp,
     // Apply mesh adaptation
     MRadaptation(mra_config);
     alpha_l.resize();
-    recompute_alpha_l();
+    extract_alpha_l();
     grad_alpha_l.resize();
     normal.resize();
     H.resize();
+    int_energy_variables.resize();
     update_gradient();
     #ifdef DEBUG
       check_data(1);
@@ -1219,14 +1223,13 @@ void TwoScaleCapillarity<dim>::run(const std::string& num_flux_hyp,
       conserved_variables_old = conserved_variables;
     #endif
 
-    // Solve the hyperbolic + capillarity subsytems
+    // Solve the hyperbolic + capillarity subsystems
     conserved_variables_tmp.resize();
     perform_fv_stage(numerical_flux_hyp, non_conservative_flux, numerical_flux_st);
 
     // Apply relaxation
     if(apply_relax) {
-      // Apply relaxation if desired, which will modify alpha_l and, consequently, for what
-      // concerns next time step, rho_alpha_l (as well as grad_alpha_l).
+      // Apply relaxation if desired, which will modify alpha_l (as well as grad_alpha_l).
       dalpha_l.resize();
       to_be_relaxed.resize();
       Newton_iterations.resize();
@@ -1244,7 +1247,7 @@ void TwoScaleCapillarity<dim>::run(const std::string& num_flux_hyp,
 
     /*--- Consider the second stage for the second order ---*/
     #ifdef ORDER_2
-      // Solve the hyperbolic + capillarity subsytems
+      // Solve the hyperbolic + capillarity subsystems
       perform_fv_stage(numerical_flux_hyp, non_conservative_flux, numerical_flux_st);
 
       // Complete evaluation before applying relaxation.
@@ -1261,6 +1264,11 @@ void TwoScaleCapillarity<dim>::run(const std::string& num_flux_hyp,
 
       // Apply relaxation
       if(apply_relax) {
+        // Update large-scale volume fraction and its gradient for the averaged state
+        // (the gradient is employed by the conversion to internal-energy formulation)
+        extract_alpha_l();
+        update_gradient();
+
         // Move to internal-energy formulation for relaxation
         samurai::for_each_cell(mesh,
                                [&](const auto& cell)
@@ -1269,10 +1277,8 @@ void TwoScaleCapillarity<dim>::run(const std::string& num_flux_hyp,
                                   }
                               );
 
-        recompute_alpha_l();
-        update_geometry();
-        // Apply relaxation if desired, which will modify alpha_l and, consequently, for what
-        // concerns next time step, rho_alpha_l (as well as grad_alpha_l).
+        update_geometry(false);
+        // Apply relaxation if desired, which will modify alpha_l (as well as grad_alpha_l).
         apply_relaxation(relaxation_op);
 
         // Move back to total-energy formulation to conclude
@@ -1287,7 +1293,7 @@ void TwoScaleCapillarity<dim>::run(const std::string& num_flux_hyp,
 
     // Postprocess data
     if(!apply_relax) {
-      recompute_alpha_l();
+      extract_alpha_l();
       update_geometry();
     }
     execute_postprocess(t);
@@ -1296,7 +1302,7 @@ void TwoScaleCapillarity<dim>::run(const std::string& num_flux_hyp,
     if(t >= static_cast<Number>(nsave + 1)*dt_save || t == Tf) {
       const std::string suffix = (nfiles != 1) ? "_ite_" + Utilities::unsigned_to_string(++nsave) : "";
       save(suffix, conserved_variables,
-                   alpha_l, grad_alpha_l, normal, H,
+                   grad_alpha_l, normal, H,
                    aux_fields.rho_liq, aux_fields.p_liq, aux_fields.T_liq,
                    aux_fields.rho_g, aux_fields.p_g, aux_fields.T_g,
                    aux_fields.p,

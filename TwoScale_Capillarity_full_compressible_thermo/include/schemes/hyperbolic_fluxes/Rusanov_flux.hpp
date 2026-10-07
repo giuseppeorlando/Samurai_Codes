@@ -46,7 +46,7 @@ namespace samurai {
      * @param qL left state
      * @param qR right state
      * @param grad_alpha_l_L left gradient of large-scale volume fraction
-     * @param grad_alpha_l_L right gradient of large-scale volume fraction
+     * @param grad_alpha_l_R right gradient of large-scale volume fraction
      * @param curr_d current direction
      */
     FluxValue<cfg> compute_discrete_flux(const FluxValue<cfg>& qL,
@@ -74,21 +74,21 @@ namespace samurai {
                                             const auto& grad_alpha_l_R,
                                             const std::size_t curr_d) {
     // Pre-fetch some variables used multiple times in order to exploit possible vectorization
-    const auto m_l_L         = qL(Ml_INDEX);
-    const auto m_g_L         = qL(Mg_INDEX);
-    const auto m_d_L         = qL(Md_INDEX);
-    const auto rho_alpha_l_L = qL(RHO_ALPHA_l_INDEX);
-    const auto rho_z_L       = qL(RHO_Z_INDEX);
-    const auto mliqEliq_L    = qL(Mliq_Eliq_INDEX);
-    const auto mgEg_L        = qL(Mg_Eg_INDEX);
+    const auto m_l_L      = qL(Ml_INDEX);
+    const auto m_g_L      = qL(Mg_INDEX);
+    const auto m_d_L      = qL(Md_INDEX);
+    const auto alpha_l_L  = qL(ALPHA_l_INDEX);
+    const auto rho_z_L    = qL(RHO_Z_INDEX);
+    const auto mliqEliq_L = qL(Mliq_Eliq_INDEX);
+    const auto mgEg_L     = qL(Mg_Eg_INDEX);
 
-    const auto m_l_R         = qR(Ml_INDEX);
-    const auto m_g_R         = qR(Mg_INDEX);
-    const auto m_d_R         = qR(Md_INDEX);
-    const auto rho_alpha_l_R = qR(RHO_ALPHA_l_INDEX);
-    const auto rho_z_R       = qR(RHO_Z_INDEX);
-    const auto mliqEliq_R    = qR(Mliq_Eliq_INDEX);
-    const auto mgEg_R        = qR(Mg_Eg_INDEX);
+    const auto m_l_R      = qR(Ml_INDEX);
+    const auto m_g_R      = qR(Mg_INDEX);
+    const auto m_d_R      = qR(Md_INDEX);
+    const auto alpha_l_R  = qR(ALPHA_l_INDEX);
+    const auto rho_z_R    = qR(RHO_Z_INDEX);
+    const auto mliqEliq_R = qR(Mliq_Eliq_INDEX);
+    const auto mgEg_R     = qR(Mg_Eg_INDEX);
 
     // Verify if left and right state are coherent
     // Compute c_liq_L
@@ -107,7 +107,6 @@ namespace samurai {
     }
     const auto mod_grad_alpha_l_L = std::sqrt(mod2_grad_alpha_l_L);
 
-    const auto alpha_l_L   = rho_alpha_l_L*inv_rho_L;
     const auto alpha_d_L   = alpha_l_L*m_d_L/m_l_L; // TODO: Add a check in case of zero volume fraction
     const auto alpha_liq_L = alpha_l_L + alpha_d_L;
     const auto rho_liq_L   = m_liq_L/alpha_liq_L;
@@ -155,7 +154,6 @@ namespace samurai {
     }
     const auto mod_grad_alpha_l_R = std::sqrt(mod2_grad_alpha_l_R);
 
-    const auto alpha_l_R   = rho_alpha_l_R*inv_rho_R;
     const auto alpha_d_R   = alpha_l_R*m_d_R/m_l_R; // TODO: Add a check in case of zero volume fraction
     const auto alpha_liq_R = alpha_l_R + alpha_d_R;
     const auto rho_liq_R   = m_liq_R/alpha_liq_R;
@@ -292,23 +290,27 @@ namespace samurai {
                                                      Utilities::perform_reconstruction<Field>(primLL, primL, primR, primRR,
                                                                                               primL_recon, primR_recon);
 
-                                                     /* NOTE: Perform the reconstruction on w = grad\alpha_{l}. This is maybe where
-                                                     a 'mixed' formulation differs from a formulation in which we keep \grad\alpha_{l} that
-                                                     we suitably approximate, e.g., as finite difference of \alpha_{l}.
-                                                     In the mixed formulation, I should reconstruct the auxiliary variable for 'coherence',
-                                                     while, keeping \grad\alpha_{l}, I should recompute its aprpoximation starting from the
-                                                     reconstructed values. The 'issue' somewhat is that I do not have all the reconstructed
-                                                     values to computed the gradient. Suppose I am on face i+1/2,j: I have access to
+                                                     /* NOTE: Perform the reconstruction on w = grad\alpha_{l}. This is maybe
+                                                     where a 'mixed' formulation differs from a formulation in which we keep
+                                                     \grad\alpha_{l} that we suitably approximate, e.g., as finite difference of
+                                                     \alpha_{l}. In the mixed formulation, I should reconstruct the auxiliary
+                                                     variable for 'coherence', while, keeping \grad\alpha_{l}, I should
+                                                     recompute its approximation starting from the reconstructed values. The
+                                                     'issue' somewhat is that I do not have all the reconstructed values to
+                                                     compute the gradient. Suppose I am on face i+1/2,j: I have access to
                                                      \alpha_{l_{i+1,j}} and \alpha_{l_{i-1,j}} so as to compute
-                                                     (\alpha_{l_{i+1,j}} - \alpha_{l_{i-1,j}})/dx as approximation of \partial_{x}\alpha_{l_{i+1/2,j}},
-                                                     but what about the approximation of \partial_{y}\alpha_{l_{i+1/2,j}}? I do not have access, e.g., to
-                                                     \alpha_{l_{j+1,i}} reconstructed. With the first approach obviously, we 'decouple' w from \alpha_{l},
-                                                     in the sense that it is no longer computed directly as \grad\alpha_{l} */
+                                                     (\alpha_{l_{i+1,j}} - \alpha_{l_{i-1,j}})/dx as approximation of
+                                                     \partial_{x}\alpha_{l_{i+1/2,j}}, but what about the approximation of
+                                                     \partial_{y}\alpha_{l_{i+1/2,j}}? I do not have access, e.g., to
+                                                     \alpha_{l_{j+1,i}} reconstructed. With the first approach obviously, we
+                                                     'decouple' w from \alpha_{l}, in the sense that it is no longer computed
+                                                     directly as \grad\alpha_{l} */
                                                      auto grad_alpha_l_L_flux = xt::zeros_like(grad_alpha_l_L);
                                                      auto grad_alpha_l_R_flux = xt::zeros_like(grad_alpha_l_R);
                                                      Utilities::perform_reconstruction<Field_Vect>(grad_alpha_l_LL, grad_alpha_l_L,
                                                                                                    grad_alpha_l_R, grad_alpha_l_RR,
-                                                                                                   grad_alpha_l_L_flux, grad_alpha_l_R_flux);
+                                                                                                   grad_alpha_l_L_flux,
+                                                                                                   grad_alpha_l_R_flux);
 
                                                      FluxValue<cfg> qL = this->prim2cons(primL_recon, grad_alpha_l_L_flux);
                                                      FluxValue<cfg> qR = this->prim2cons(primR_recon, grad_alpha_l_R_flux);

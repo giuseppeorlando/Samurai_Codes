@@ -24,10 +24,13 @@ namespace samurai {
      * @param EOS_phase_liq_ liquid equation of state
      * @param EOS_phase_gas_ gas equation of state
      * @param sigma_ surface tension coefficient
+     * @param transport_alpha_l_ flag to add the non-conservative term for the large-scale volume fraction
+     *        (true with Rusanov flux; HLLC flux already includes it)
      */
     NonConservativeFlux(const EOS<Number>& EOS_phase_liq_,
                         const EOS<Number>& EOS_phase_gas_,
-                        const Number sigma_);
+                        const Number sigma_,
+                        const bool transport_alpha_l_);
 
     /**
      * Compute the flux over all the directions
@@ -37,12 +40,16 @@ namespace samurai {
     auto make_two_scale_capillarity(const Field_Vect& grad_alpha_l);
 
   private:
+    const bool transport_alpha_l; /*!< Flag to add the non-conservative term u.grad(alpha_l) */
+
     /**
      * Non-conservative flux
      * @param qL left state
      * @param qR right state
      * @param grad_alpha_l_L left gradient of large-scale volume fraction
      * @param grad_alpha_l_R right gradient of large-scale volume fraction
+     * @param alpha_l_cell_L large-scale volume fraction of the left cell (not reconstructed)
+     * @param alpha_l_cell_R large-scale volume fraction of the right cell (not reconstructed)
      * @param curr_d current direction
      * @return T_minus 'internal' contribution of non-conservative flux
      * @return T_plus 'external' contribution of non-conservative flux
@@ -51,6 +58,8 @@ namespace samurai {
                                const FluxValue<cfg>& qR,
                                const auto& grad_alpha_l_L,
                                const auto& grad_alpha_l_R,
+                               const Number alpha_l_cell_L,
+                               const Number alpha_l_cell_R,
                                const std::size_t curr_d,
                                FluxValue<cfg>& T_minus,
                                FluxValue<cfg>& T_plus);
@@ -61,8 +70,10 @@ namespace samurai {
   template<class Field>
   NonConservativeFlux<Field>::NonConservativeFlux(const EOS<Number>& EOS_phase_liq_,
                                                   const EOS<Number>& EOS_phase_gas_,
-                                                  const Number sigma_):
-    Flux<Field>(EOS_phase_liq_, EOS_phase_gas_, sigma_) {}
+                                                  const Number sigma_,
+                                                  const bool transport_alpha_l_):
+    Flux<Field>(EOS_phase_liq_, EOS_phase_gas_, sigma_),
+    transport_alpha_l(transport_alpha_l_) {}
 
   // Implementation of a non-conservative flux
   //
@@ -71,21 +82,21 @@ namespace samurai {
                                                          const FluxValue<cfg>& qR,
                                                          const auto& grad_alpha_l_L,
                                                          const auto& grad_alpha_l_R,
+                                                         const Number alpha_l_cell_L,
+                                                         const Number alpha_l_cell_R,
                                                          const std::size_t curr_d,
                                                          FluxValue<cfg>& T_minus,
                                                          FluxValue<cfg>& T_plus) {
     // Zero contribution from continuity and momentum equations
-    // (as well as large-scale interface and small-scale interfacial area density)
-    T_minus(Ml_INDEX)          = static_cast<Number>(0.0);
-    T_plus(Ml_INDEX)           = static_cast<Number>(0.0);
-    T_minus(Mg_INDEX)          = static_cast<Number>(0.0);
-    T_plus(Mg_INDEX)           = static_cast<Number>(0.0);
-    T_minus(Md_INDEX)          = static_cast<Number>(0.0);
-    T_plus(Md_INDEX)           = static_cast<Number>(0.0);
-    T_minus(RHO_Z_INDEX)       = static_cast<Number>(0.0);
-    T_plus(RHO_Z_INDEX)        = static_cast<Number>(0.0);
-    T_minus(RHO_ALPHA_l_INDEX) = static_cast<Number>(0.0);
-    T_plus(RHO_ALPHA_l_INDEX)  = static_cast<Number>(0.0);
+    // (as well as small-scale interfacial area density)
+    T_minus(Ml_INDEX)      = static_cast<Number>(0.0);
+    T_plus(Ml_INDEX)       = static_cast<Number>(0.0);
+    T_minus(Mg_INDEX)      = static_cast<Number>(0.0);
+    T_plus(Mg_INDEX)       = static_cast<Number>(0.0);
+    T_minus(Md_INDEX)      = static_cast<Number>(0.0);
+    T_plus(Md_INDEX)       = static_cast<Number>(0.0);
+    T_minus(RHO_Z_INDEX)   = static_cast<Number>(0.0);
+    T_plus(RHO_Z_INDEX)    = static_cast<Number>(0.0);
     for(std::size_t d = 0; d < Field::dim; ++d) {
       T_minus(RHO_U_INDEX + d) = static_cast<Number>(0.0);
       T_plus(RHO_U_INDEX + d)  = static_cast<Number>(0.0);
@@ -94,12 +105,12 @@ namespace samurai {
     /*--- Left state ---*/
     // Pre-fetch variables that will be used several times so as to exploit possible vectorization
     // (as well as to enhance readability)
-    const auto m_l_L         = qL(Ml_INDEX);
-    const auto m_g_L         = qL(Mg_INDEX);
-    const auto m_d_L         = qL(Md_INDEX);
-    const auto rho_alpha_l_L = qL(RHO_ALPHA_l_INDEX);
-    const auto mliqEliq_L    = qL(Mliq_Eliq_INDEX);
-    const auto mgEg_L        = qL(Mg_Eg_INDEX);
+    const auto m_l_L      = qL(Ml_INDEX);
+    const auto m_g_L      = qL(Mg_INDEX);
+    const auto m_d_L      = qL(Md_INDEX);
+    const auto alpha_l_L  = qL(ALPHA_l_INDEX);
+    const auto mliqEliq_L = qL(Mliq_Eliq_INDEX);
+    const auto mgEg_L     = qL(Mg_Eg_INDEX);
 
     // Compute velocity along current direction
     const auto m_liq_L   = m_l_L + m_d_L;
@@ -108,7 +119,6 @@ namespace samurai {
     const auto vel_d_L   = qL(RHO_U_INDEX + curr_d)*inv_rho_L;
 
     // Density liquid phase
-    const auto alpha_l_L   = rho_alpha_l_L*inv_rho_L;
     const auto alpha_d_L   = alpha_l_L*m_d_L/m_l_L; // TODO: Add a check in case of zero volume fraction
     const auto alpha_liq_L = alpha_l_L + alpha_d_L;
     const auto rho_liq_L   = m_liq_L/alpha_liq_L; // TODO: Add a check in case of zero volume fraction
@@ -159,12 +169,12 @@ namespace samurai {
     /*--- Right state ---*/
     // Pre-fetch variables that will be used several times so as to exploit possible vectorization
     // (as well as to enhance readability)
-    const auto m_l_R         = qR(Ml_INDEX);
-    const auto m_g_R         = qR(Mg_INDEX);
-    const auto m_d_R         = qR(Md_INDEX);
-    const auto rho_alpha_l_R = qR(RHO_ALPHA_l_INDEX);
-    const auto mliqEliq_R    = qR(Mliq_Eliq_INDEX);
-    const auto mgEg_R        = qR(Mg_Eg_INDEX);
+    const auto m_l_R      = qR(Ml_INDEX);
+    const auto m_g_R      = qR(Mg_INDEX);
+    const auto m_d_R      = qR(Md_INDEX);
+    const auto alpha_l_R  = qR(ALPHA_l_INDEX);
+    const auto mliqEliq_R = qR(Mliq_Eliq_INDEX);
+    const auto mgEg_R     = qR(Mg_Eg_INDEX);
 
     // Compute velocity along current direction
     const auto m_liq_R   = m_l_R + m_d_R;
@@ -173,7 +183,6 @@ namespace samurai {
     const auto vel_d_R   = qR(RHO_U_INDEX + curr_d)*inv_rho_R;
 
     // Density liquid phase
-    const auto alpha_l_R   = rho_alpha_l_R*inv_rho_R;
     const auto alpha_d_R   = alpha_l_R*m_d_R/m_l_R; // TODO: Add a check in case of zero volume fraction
     const auto alpha_liq_R = alpha_l_R + alpha_d_R;
     const auto rho_liq_R   = m_liq_R/alpha_liq_R; // TODO: Add a check in case of zero volume fraction
@@ -202,7 +211,7 @@ namespace samurai {
 
     // Augmented pressure liquid phase
     const auto pi_liq_R = p_liq_R - static_cast<Number>(2.0/3.0)*this->sigma*chi_liq_R*Sigma_d_R/alpha_liq_R;
-    // TODO: Add a check in case of zero volume fraction
+                          // TODO: Add a check in case of zero volume fraction
 
     // Density gas phase
     const auto alpha_g_R = static_cast<Number>(1.0) - alpha_liq_R;
@@ -222,6 +231,27 @@ namespace samurai {
     // TODO: Add a check in case of zero volume fraction
 
     /*--- Build the non conservative flux ---*/
+    // Non-conservative term for the large-scale volume fraction (only for Rusanov flux,
+    // since HLLC flux already includes it through s_star*(alpha_l_R - alpha_l_L)).
+    // NOTE: The factor multiplying the velocity jump employs cell values (and not the reconstructed ones)
+    //       so as to keep consistency in case of second order
+    if(transport_alpha_l) {
+      T_minus(ALPHA_l_INDEX) = (static_cast<Number>(0.5)*
+                                (vel_d_L*alpha_l_L +
+                                 vel_d_R*alpha_l_R) -
+                                static_cast<Number>(0.5)*
+                                (vel_d_L + vel_d_R)*alpha_l_cell_L);
+      T_plus(ALPHA_l_INDEX)  = (static_cast<Number>(0.5)*
+                                (vel_d_L*alpha_l_L +
+                                 vel_d_R*alpha_l_R) -
+                                static_cast<Number>(0.5)*
+                                (vel_d_L + vel_d_R)*alpha_l_cell_R);
+    }
+    else {
+      T_minus(ALPHA_l_INDEX) = static_cast<Number>(0.0);
+      T_plus(ALPHA_l_INDEX)  = static_cast<Number>(0.0);
+    }
+
     T_minus(Mliq_Eliq_INDEX) = -(static_cast<Number>(0.5)*
                                  (vel_d_L*Y_g_L*alpha_liq_L*pi_liq_L +
                                   vel_d_R*Y_g_R*alpha_liq_R*pi_liq_R) -
@@ -271,7 +301,7 @@ namespace samurai {
                                                         const StencilValues<cfg>& field)
                                                         {
                                                           #ifdef ORDER_2
-                                                            // MUSCL recsontruction
+                                                            // MUSCL reconstruction
                                                             const auto& grad_alpha_l_LL = grad_alpha_l[data.cells[0]];
                                                             const auto& grad_alpha_l_L  = grad_alpha_l[data.cells[1]];
                                                             const auto& grad_alpha_l_R  = grad_alpha_l[data.cells[2]];
@@ -287,26 +317,36 @@ namespace samurai {
                                                             Utilities::perform_reconstruction<Field>(primLL, primL, primR, primRR,
                                                                                                      primL_recon, primR_recon);
 
-                                                            /* NOTE: Perform the reconstruction on w = grad\alpha_{l}. This is maybe where
-                                                            a mixed formulation differs from a formulation in which we keep \grad\alpha_{l} that
-                                                            we suitably approximate, e.g., as finite difference of \alpha_{l}.
-                                                            In the mixed formulation, I should reconstruct the auxiliary variable for 'coherence',
-                                                            while, keeping \grad\alpha_{l}, I should recompute its aprpoximation starting from the
-                                                            reconstructed values. The 'issue' somewhat is that I do not have all the reconstructed
-                                                            values to computed the gradient. Suppose I am on face i+1/2,j: I have access to
+                                                            /* NOTE: Perform the reconstruction on w = grad\alpha_{l}. This is maybe
+                                                            where a mixed formulation differs from a formulation in which we keep
+                                                            \grad\alpha_{l} that we suitably approximate, e.g., as finite difference of
+                                                            \alpha_{l}. In the mixed formulation, I should reconstruct the auxiliary
+                                                            variable for 'coherence', while, keeping \grad\alpha_{l}, I should
+                                                            recompute its approximation starting from the reconstructed values. The
+                                                            'issue' somewhat is that I do not have all the reconstructed values to
+                                                            compute the gradient. Suppose I am on face i+1/2,j: I have access to
                                                             \alpha_{l_{i+1,j}} and \alpha_{l_{i-1,j}} so as to compute
-                                                            (\alpha_{l_{i+1,j}} - \alpha_{l_{i-1,j}})/dx as approximation of \partial_{x}\alpha_{l_{i+1/2,j}},
-                                                            but what about the approximation of \partial_{y}\alpha_{l_{i+1/2,j}}? I do not have access, e.g., to
-                                                            \alpha_{l_{j+1,i}} reconstructed. With the first approach obviously, we 'decouple' w from \alpha_{l},
-                                                            in the sense that it is no onleger computed directly as \grad\alpha_{l} */
+                                                            (\alpha_{l_{i+1,j}} - \alpha_{l_{i-1,j}})/dx as approximation of
+                                                            \partial_{x}\alpha_{l_{i+1/2,j}}, but what about the approximation of
+                                                            \partial_{y}\alpha_{l_{i+1/2,j}}? I do not have access, e.g., to
+                                                            \alpha_{l_{j+1,i}} reconstructed. With the first approach obviously, we
+                                                            'decouple' w from \alpha_{l}, in the sense that it is no longer computed
+                                                            directly as \grad\alpha_{l} */
                                                             auto grad_alpha_l_L_flux = xt::zeros_like(grad_alpha_l_L);
                                                             auto grad_alpha_l_R_flux = xt::zeros_like(grad_alpha_l_R);
-                                                            Utilities::perform_reconstruction<Field_Vect>(grad_alpha_l_LL, grad_alpha_l_L,
-                                                                                                          grad_alpha_l_R, grad_alpha_l_RR,
-                                                                                                          grad_alpha_l_L_flux, grad_alpha_l_R_flux);
+                                                            Utilities::perform_reconstruction<Field_Vect>(grad_alpha_l_LL,
+                                                                                                          grad_alpha_l_L,
+                                                                                                          grad_alpha_l_R,
+                                                                                                          grad_alpha_l_RR,
+                                                                                                          grad_alpha_l_L_flux,
+                                                                                                          grad_alpha_l_R_flux);
 
                                                             FluxValue<cfg> qL = this->prim2cons(primL_recon, grad_alpha_l_L_flux);
                                                             FluxValue<cfg> qR = this->prim2cons(primR_recon, grad_alpha_l_R_flux);
+
+                                                            // Cell values of large-scale volume fraction (not reconstructed)
+                                                            const auto alpha_l_cell_L = field[1](ALPHA_l_INDEX);
+                                                            const auto alpha_l_cell_R = field[2](ALPHA_l_INDEX);
                                                           #else
                                                             // Extract the states
                                                             const FluxValue<cfg>& qL = field[0];
@@ -314,6 +354,9 @@ namespace samurai {
 
                                                             const auto& grad_alpha_l_L_flux = grad_alpha_l[data.cells[0]];
                                                             const auto& grad_alpha_l_R_flux = grad_alpha_l[data.cells[1]];
+
+                                                            const auto alpha_l_cell_L = qL(ALPHA_l_INDEX);
+                                                            const auto alpha_l_cell_R = qR(ALPHA_l_INDEX);
                                                           #endif
 
                                                           FluxValue<cfg> T_minus,
@@ -321,6 +364,7 @@ namespace samurai {
 
                                                           compute_discrete_flux(qL, qR,
                                                                                 grad_alpha_l_L_flux, grad_alpha_l_R_flux,
+                                                                                alpha_l_cell_L, alpha_l_cell_R,
                                                                                 d, T_minus, T_plus);
 
                                                           flux[0] = T_minus;

@@ -8,5 +8,5 @@
  "eps_over_R": 0.2,
  "p_init": 1e5,
  "rho_liq_init": 1e3,
- "rho_gas_init": 1.0
+ "rho_g_init": 1.0
 }

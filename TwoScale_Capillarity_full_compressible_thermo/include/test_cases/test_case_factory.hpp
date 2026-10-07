@@ -38,10 +38,10 @@
  * The solver, SolverContext, and TestCaseBase never change.
  *
  * @tparam Traits Traits struct defined in the solver header.
- * @param name_tc name of the desidered test case
+ * @param name_tc name of the desired test case
  * @param param_file name of the parameter files.
                      It can be not used if exception in reading json file is used
-                     and defualt values are assigned
+                     and default values are assigned
  */
 template<typename Traits, typename AuxFields>
 std::unique_ptr<TestCaseBase<Traits, AuxFields>>
