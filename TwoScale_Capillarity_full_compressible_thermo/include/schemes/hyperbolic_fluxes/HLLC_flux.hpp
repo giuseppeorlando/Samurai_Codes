@@ -14,7 +14,7 @@ namespace samurai {
   using namespace EquationData;
 
   /**
-   * Implementation of a HLLC flux
+   * Implementation of a HLLC flux (Ward thesis formulation)
    */
   template<class Field>
   class HLLCFlux: public Flux<Field> {
@@ -57,22 +57,44 @@ namespace samurai {
                                         const std::size_t curr_d) const;
 
     /**
-     * HLLC flux
+     * Compute the cell quantities needed for the pressure work in the phasic total energies
+     * @param q cell state (not reconstructed)
+     * @param grad_alpha_l gradient of large-scale volume fraction of the cell
+     * @return alpha_pi_liq liquid volume fraction times liquid augmented pressure
+     * @return alpha_pi_g gas volume fraction times gas augmented pressure
+     * @return Y_liq liquid mass fraction
+     */
+    void compute_pressure_work_quantities(const FluxValue<cfg>& q,
+                                          const auto& grad_alpha_l,
+                                          Number& alpha_pi_liq,
+                                          Number& alpha_pi_g,
+                                          Number& Y_liq) const;
+
+    /**
+     * HLLC flux (Ward thesis formulation)
      * @param qL left state
      * @param qR right state
      * @param grad_alpha_l_L left gradient of large-scale volume fraction
      * @param grad_alpha_l_R right gradient of large-scale volume fraction
+     * @param q_cell_L left cell state (not reconstructed)
+     * @param q_cell_R right cell state (not reconstructed)
+     * @param grad_alpha_l_cell_L left cell gradient of large-scale volume fraction (not reconstructed)
+     * @param grad_alpha_l_cell_R right cell gradient of large-scale volume fraction (not reconstructed)
      * @param curr_d current direction
-     * @return F_minus flux from 'minus' to 'plus'
-     * @return F_plus flux from 'plus' to 'minus'
+     * @return H_minus flux from 'minus' to 'plus'
+     * @return H_plus flux from 'plus' to 'minus'
      */
     void compute_discrete_flux(const FluxValue<cfg>& qL,
                                const FluxValue<cfg>& qR,
                                const auto& grad_alpha_l_L,
                                const auto& grad_alpha_l_R,
+                               const FluxValue<cfg>& q_cell_L,
+                               const FluxValue<cfg>& q_cell_R,
+                               const auto& grad_alpha_l_cell_L,
+                               const auto& grad_alpha_l_cell_R,
                                const std::size_t curr_d,
-                               FluxValue<cfg>& F_minus,
-                               FluxValue<cfg>& F_plus);
+                               FluxValue<cfg>& H_minus,
+                               FluxValue<cfg>& H_plus);
   };
 
   // Constructor derived from the base class
@@ -130,7 +152,10 @@ namespace samurai {
     // Compute contribution related to total energies. The difficulty is that
     // we need to compute pi_k which depends on p_k and requires therefore
     // to compute the thermodynamic internal energy, meaning that we need to
-    // remove the contribution due to large-scale gradient
+    // remove the contribution due to large-scale gradient.
+    // NOTE: Since the pressure work is not included in the conservative flux of the phasic
+    //       total energies (Ward thesis formulation), these latter behave as transported quantities
+    //       and the pressure contribution is multiplied by zero (kept for debugging purposes)
     const auto m_liq = m_l + m_d;
     auto norm2_vel   = static_cast<Number>(0.0);
     for(std::size_t d = 0; d < Field::dim; ++d) {
@@ -163,7 +188,8 @@ namespace samurai {
                         // TODO: Add a check in case of zero volume fraction
 
     q_star(Mliq_Eliq_INDEX) = (m_l_star + m_d_star)*
-                              (mliqEliq/m_liq + (S_star - vel_d)*(S_star + pi_liq/(rho_liq*(S - vel_d))));
+                              (mliqEliq/m_liq +
+                               static_cast<Number>(0.0)*(S_star - vel_d)*(S_star + pi_liq/(rho_liq*(S - vel_d))));
 
     // Compute rho_g
     const auto alpha_g = static_cast<Number>(1.0) - alpha_liq;
@@ -182,9 +208,72 @@ namespace samurai {
                       // TODO: Add a check in case of zero volume fraction
 
     q_star(Mg_Eg_INDEX) = m_g_star*
-                          (mgEg/m_g + (S_star - vel_d)*(S_star + pi_g/(rho_g*(S - vel_d))));
+                          (mgEg/m_g +
+                           static_cast<Number>(0.0)*(S_star - vel_d)*(S_star + pi_g/(rho_g*(S - vel_d))));
 
     return q_star;
+  }
+
+  // Implement the auxiliary routine that computes the cell quantities for the pressure work
+  //
+  template<class Field>
+  void HLLCFlux<Field>::compute_pressure_work_quantities(const FluxValue<cfg>& q,
+                                                         const auto& grad_alpha_l,
+                                                         Number& alpha_pi_liq,
+                                                         Number& alpha_pi_g,
+                                                         Number& Y_liq) const {
+    // Pre-fetch some variables used multiple times in order to exploit possible vectorization
+    const auto alpha_l  = q(ALPHA_l_INDEX);
+    const auto m_l      = q(Ml_INDEX);
+    const auto m_g      = q(Mg_INDEX);
+    const auto m_d      = q(Md_INDEX);
+    const auto mliqEliq = q(Mliq_Eliq_INDEX);
+    const auto mgEg     = q(Mg_Eg_INDEX);
+
+    // Compute useful quantities
+    const auto m_liq   = m_l + m_d;
+    const auto rho     = m_liq + m_g;
+    const auto inv_rho = static_cast<Number>(1.0)/rho;
+    auto norm2_vel     = static_cast<Number>(0.0);
+    for(std::size_t d = 0; d < Field::dim; ++d) {
+      norm2_vel += (q(RHO_U_INDEX + d)*inv_rho)*(q(RHO_U_INDEX + d)*inv_rho);
+    }
+
+    auto mod2_grad_alpha_l = static_cast<Number>(0.0);
+    for(std::size_t d = 0; d < Field::dim; ++d) {
+      mod2_grad_alpha_l += grad_alpha_l[d]*grad_alpha_l[d];
+    }
+    const auto mod_grad_alpha_l = std::sqrt(mod2_grad_alpha_l);
+
+    // Compute alpha_liq*pi_liq
+    const auto alpha_d   = alpha_l*m_d/m_l; // TODO: Add a check in case of zero volume fraction
+    const auto alpha_liq = alpha_l + alpha_d;
+    const auto rho_liq   = m_liq/alpha_liq; // TODO: Add a check in case of zero volume fraction
+    const auto Sigma_d   = q(RHO_Z_INDEX)/std::cbrt(rho_liq*rho_liq);
+
+    Y_liq              = m_liq*inv_rho;
+    const auto chi_liq = Y_liq;
+    const auto e_liq   = mliqEliq/m_liq
+                       - static_cast<Number>(0.5)*norm2_vel
+                       - this->sigma*inv_rho*(chi_liq/Y_liq)*(Sigma_d + mod_grad_alpha_l);
+                       // TODO: Add a check in case of zero volume fraction
+    const auto p_liq   = this->EOS_phase_liq.pres_value_Rhoe(rho_liq, e_liq);
+
+    alpha_pi_liq = alpha_liq*p_liq - static_cast<Number>(2.0/3.0)*this->sigma*chi_liq*Sigma_d;
+
+    // Compute alpha_g*pi_g
+    const auto alpha_g = static_cast<Number>(1.0) - alpha_liq;
+    const auto rho_g   = m_g/alpha_g; // TODO: Add a check in case of zero volume fraction
+
+    const auto Y_g   = static_cast<Number>(1.0) - Y_liq;
+    const auto chi_g = Y_g;
+    const auto e_g   = mgEg/m_g
+                     - static_cast<Number>(0.5)*norm2_vel
+                     - this->sigma*inv_rho*(chi_g/Y_g)*(Sigma_d + mod_grad_alpha_l);
+                     // TODO: Add a check in case of zero volume fraction
+    const auto p_g   = this->EOS_phase_gas.pres_value_Rhoe(rho_g, e_g);
+
+    alpha_pi_g = alpha_g*p_g - static_cast<Number>(2.0/3.0)*this->sigma*chi_g*Sigma_d;
   }
 
   // Implementation of a HLLC flux
@@ -194,9 +283,13 @@ namespace samurai {
                                               const FluxValue<cfg>& qR,
                                               const auto& grad_alpha_l_L,
                                               const auto& grad_alpha_l_R,
+                                              const FluxValue<cfg>& q_cell_L,
+                                              const FluxValue<cfg>& q_cell_R,
+                                              const auto& grad_alpha_l_cell_L,
+                                              const auto& grad_alpha_l_cell_R,
                                               const std::size_t curr_d,
-                                              FluxValue<cfg>& F_minus,
-                                              FluxValue<cfg>& F_plus) {
+                                              FluxValue<cfg>& H_minus,
+                                              FluxValue<cfg>& H_plus) {
     // Pre-fetch some variables used multiple times in order to exploit possible vectorization
     const auto m_l_L      = qL(Ml_INDEX);
     const auto m_g_L      = qL(Mg_INDEX);
@@ -385,32 +478,77 @@ namespace samurai {
     const auto q_star_L = compute_middle_state(qL, grad_alpha_l_L, s_L, s_star, curr_d);
     const auto q_star_R = compute_middle_state(qR, grad_alpha_l_R, s_R, s_star, curr_d);
 
-    // Compute the flux
+    // Compute the flux (pressure work excluded from phasic total energies),
+    // as well as velocity and mixture pressure at the interface
+    Number vel_d_face,
+           p_face;
     if(s_L >= static_cast<Number>(0.0)) {
-      F_minus = this->evaluate_conservative_hyperbolic_operator(qL, grad_alpha_l_L, curr_d);
+      H_minus    = this->evaluate_conservative_hyperbolic_operator(qL, grad_alpha_l_L, curr_d, false);
+      vel_d_face = vel_d_L;
+      p_face     = p_L;
     }
     else if(s_L < static_cast<Number>(0.0) &&
             s_star >= static_cast<Number>(0.0)) {
-      F_minus = this->evaluate_conservative_hyperbolic_operator(qL, grad_alpha_l_L, curr_d) + s_L*(q_star_L - qL);
+      H_minus    = this->evaluate_conservative_hyperbolic_operator(qL, grad_alpha_l_L, curr_d, false) + s_L*(q_star_L - qL);
+      vel_d_face = s_star;
+      p_face     = p_L + rho_L*(vel_d_L - s_star)*(vel_d_L - s_L);
     }
     else if(s_star < static_cast<Number>(0.0) &&
             s_R >= static_cast<Number>(0.0)) {
-      F_minus = this->evaluate_conservative_hyperbolic_operator(qR, grad_alpha_l_R, curr_d) + s_R*(q_star_R - qR);
+      H_minus    = this->evaluate_conservative_hyperbolic_operator(qR, grad_alpha_l_R, curr_d, false) + s_R*(q_star_R - qR);
+      vel_d_face = s_star;
+      p_face     = p_R + rho_R*(vel_d_R - s_star)*(vel_d_R - s_R);
     }
     else if(s_R < static_cast<Number>(0.0)) {
-      F_minus = this->evaluate_conservative_hyperbolic_operator(qR, grad_alpha_l_R, curr_d);
+      H_minus    = this->evaluate_conservative_hyperbolic_operator(qR, grad_alpha_l_R, curr_d, false);
+      vel_d_face = vel_d_R;
+      p_face     = p_R;
     }
-    F_plus = F_minus;
+    H_plus = H_minus;
+
+    // Consider contribution of pressure work to phasic total energies (Ward thesis formulation).
+    // NOTE: The cell values (not reconstructed) are employed so as to keep consistency in case of second order
+    Number alpha_pi_liq_cell_L,
+           alpha_pi_g_cell_L,
+           Y_liq_cell_L;
+    compute_pressure_work_quantities(q_cell_L, grad_alpha_l_cell_L,
+                                     alpha_pi_liq_cell_L, alpha_pi_g_cell_L, Y_liq_cell_L);
+    const auto p_cell_L = alpha_pi_liq_cell_L + alpha_pi_g_cell_L;
+
+    Number alpha_pi_liq_cell_R,
+           alpha_pi_g_cell_R,
+           Y_liq_cell_R;
+    compute_pressure_work_quantities(q_cell_R, grad_alpha_l_cell_R,
+                                     alpha_pi_liq_cell_R, alpha_pi_g_cell_R, Y_liq_cell_R);
+    const auto p_cell_R = alpha_pi_liq_cell_R + alpha_pi_g_cell_R;
+
+    H_minus(Mliq_Eliq_INDEX) += (alpha_pi_liq_cell_L + Y_liq_cell_L*(p_face - p_cell_L))*vel_d_face;
+    H_plus(Mliq_Eliq_INDEX)  += (alpha_pi_liq_cell_R + Y_liq_cell_R*(p_face - p_cell_R))*vel_d_face;
+
+    H_minus(Mg_Eg_INDEX) += (alpha_pi_g_cell_L + (static_cast<Number>(1.0) - Y_liq_cell_L)*(p_face - p_cell_L))*vel_d_face;
+    H_plus(Mg_Eg_INDEX)  += (alpha_pi_g_cell_R + (static_cast<Number>(1.0) - Y_liq_cell_R)*(p_face - p_cell_R))*vel_d_face;
 
     // Consider contribution of volume fraction
     if(s_star < static_cast<Number>(0.0)) {
-      F_minus(ALPHA_l_INDEX) = s_star*(alpha_l_R - alpha_l_L);
-      F_plus(ALPHA_l_INDEX)  = static_cast<Number>(0.0);
+      H_minus(ALPHA_l_INDEX) = s_star*(alpha_l_R - alpha_l_L);
+      H_plus(ALPHA_l_INDEX)  = static_cast<Number>(0.0);
     }
     else {
-      F_plus(ALPHA_l_INDEX)  = -s_star*(alpha_l_R - alpha_l_L);
-      F_minus(ALPHA_l_INDEX) = static_cast<Number>(0.0);
+      H_plus(ALPHA_l_INDEX)  = -s_star*(alpha_l_R - alpha_l_L);
+      H_minus(ALPHA_l_INDEX) = static_cast<Number>(0.0);
     }
+
+    /* NOTE: Cell-internal contribution of the non-conservative term for the large-scale volume fraction
+       in case of second order (Schwendeman, Wahle, Kapila, JCP 2006, eq. (53)), namely
+       1/2*(u_{r,i-1/2} + u_{l,i+1/2})*(\alpha_{l_{i+1/2}}^{-} - \alpha_{l_{i-1/2}}^{+}) for cell i,
+       where u_{l}, u_{r} are the velocities from the Riemann solution on the side of the cell.
+       Since the reconstruction employs the same slope on both faces of the cell, it is split as
+       u_{l,i+1/2}*(\alpha_{l_{i+1/2}}^{-} - \alpha_{l_{i}}) + u_{r,i-1/2}*(\alpha_{l_{i}} - \alpha_{l_{i-1/2}}^{+}).
+       It vanishes identically at first order (reconstructed and cell values coincide) */
+    const auto vel_d_face_L = (s_L >= static_cast<Number>(0.0)) ? vel_d_L : s_star;
+    const auto vel_d_face_R = (s_R < static_cast<Number>(0.0)) ? vel_d_R : s_star;
+    H_minus(ALPHA_l_INDEX) += vel_d_face_L*(alpha_l_L - q_cell_L(ALPHA_l_INDEX));
+    H_plus(ALPHA_l_INDEX)  += vel_d_face_R*(alpha_l_R - q_cell_R(ALPHA_l_INDEX));
   }
 
   // Implement the contribution of the discrete flux for all the directions.
@@ -473,6 +611,10 @@ namespace samurai {
 
                                              FluxValue<cfg> qL = this->prim2cons(primL_recon, grad_alpha_l_L_flux);
                                              FluxValue<cfg> qR = this->prim2cons(primR_recon, grad_alpha_l_R_flux);
+
+                                             // Cell values (not reconstructed)
+                                             const FluxValue<cfg>& q_cell_L = field[1];
+                                             const FluxValue<cfg>& q_cell_R = field[2];
                                            #else
                                              // Extract the states
                                              const FluxValue<cfg>& qL = field[0];
@@ -480,34 +622,23 @@ namespace samurai {
 
                                              const auto& grad_alpha_l_L_flux = grad_alpha_l[data.cells[0]];
                                              const auto& grad_alpha_l_R_flux = grad_alpha_l[data.cells[1]];
+
+                                             // Cell values coincide with the states at the interface
+                                             const FluxValue<cfg>& q_cell_L = qL;
+                                             const FluxValue<cfg>& q_cell_R = qR;
+                                             const auto& grad_alpha_l_L = grad_alpha_l_L_flux;
+                                             const auto& grad_alpha_l_R = grad_alpha_l_R_flux;
                                            #endif
 
-                                           FluxValue<cfg> F_minus,
-                                                          F_plus;
+                                           FluxValue<cfg> H_minus,
+                                                          H_plus;
 
-                                           compute_discrete_flux(qL, qR, grad_alpha_l_L_flux, grad_alpha_l_R_flux, d,
-                                                                 F_minus, F_plus);
+                                           compute_discrete_flux(qL, qR, grad_alpha_l_L_flux, grad_alpha_l_R_flux,
+                                                                 q_cell_L, q_cell_R, grad_alpha_l_L, grad_alpha_l_R, d,
+                                                                 H_minus, H_plus);
 
-                                           #ifdef ORDER_2
-                                             /* NOTE: Cell-internal contribution of the non-conservative term for the
-                                                large-scale volume fraction (path-conservative MUSCL), namely
-                                                u_i*(alpha_{l_{i+1/2}}^{-} - alpha_{l_{i-1/2}}^{+}) for cell i.
-                                                It is split between the two faces of the cell as
-                                                u_i*(alpha_{l_{i+1/2}}^{-} - alpha_{l_{i}}) +
-                                                u_i*(alpha_{l_{i}} - alpha_{l_{i-1/2}}^{+}),
-                                                so that each face contribution vanishes for a constant state */
-                                             const auto& q_cell_L = field[1];
-                                             const auto& q_cell_R = field[2];
-                                             const auto vel_d_cell_L = q_cell_L(RHO_U_INDEX + d)/
-                                                                       (q_cell_L(Ml_INDEX) + q_cell_L(Mg_INDEX) + q_cell_L(Md_INDEX));
-                                             const auto vel_d_cell_R = q_cell_R(RHO_U_INDEX + d)/
-                                                                       (q_cell_R(Ml_INDEX) + q_cell_R(Mg_INDEX) + q_cell_R(Md_INDEX));
-                                             F_minus(ALPHA_l_INDEX) += vel_d_cell_L*(qL(ALPHA_l_INDEX) - q_cell_L(ALPHA_l_INDEX));
-                                             F_plus(ALPHA_l_INDEX)  += vel_d_cell_R*(qR(ALPHA_l_INDEX) - q_cell_R(ALPHA_l_INDEX));
-                                           #endif
-
-                                           flux[0] = F_minus;
-                                           flux[1] = -F_plus;
+                                           flux[0] = H_minus;
+                                           flux[1] = -H_plus;
                                          };
         }
     );

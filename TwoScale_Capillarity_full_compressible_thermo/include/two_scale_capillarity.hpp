@@ -761,11 +761,17 @@ template<std::size_t dim>
 void TwoScaleCapillarity<dim>::perform_fv_stage(auto& numerical_flux_hyp,
                                                 auto& non_conservative_flux,
                                                 auto& numerical_flux_st) {
-  // Convective operator
+  // Convective operator (the non-conservative terms are already included in the HLLC flux)
   try {
-    conserved_variables_tmp = conserved_variables
-                            - dt*numerical_flux_hyp(conserved_variables)
-                            - dt*non_conservative_flux(conserved_variables);
+    if(std::holds_alternative<samurai::HLLCFlux<Field>>(Hyperbolic_flux)) {
+      conserved_variables_tmp = conserved_variables
+                              - dt*numerical_flux_hyp(conserved_variables);
+    }
+    else {
+      conserved_variables_tmp = conserved_variables
+                              - dt*numerical_flux_hyp(conserved_variables)
+                              - dt*non_conservative_flux(conserved_variables);
+    }
     samurai::swap(conserved_variables, conserved_variables_tmp);
   }
   catch(const std::exception& e) {

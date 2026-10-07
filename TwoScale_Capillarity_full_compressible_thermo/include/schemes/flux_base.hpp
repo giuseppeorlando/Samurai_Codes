@@ -65,10 +65,12 @@ namespace samurai {
      * @param q state
      * @param grad_alpha_l gradient of large-scale volume fraction (needed for capillarity)
      * @param curr_d current direction
+     * @param pressure_work_energies flag to include the pressure work in the flux of the phasic total energies
      */
     FluxValue<cfg> evaluate_conservative_hyperbolic_operator(const FluxValue<cfg>& q,
                                                              const auto& grad_alpha_l,
-                                                             const std::size_t curr_d);
+                                                             const std::size_t curr_d,
+                                                             const bool pressure_work_energies = true);
 
     /**
      * Conversion from conserved to primitive variables
@@ -101,7 +103,8 @@ namespace samurai {
   FluxValue<typename Flux<Field>::cfg>
   Flux<Field>::evaluate_conservative_hyperbolic_operator(const FluxValue<cfg>& q,
                                                          const auto& grad_alpha_l,
-                                                         const std::size_t curr_d) {
+                                                         const std::size_t curr_d,
+                                                         const bool pressure_work_energies) {
     // Sanity check in terms of dimensions
     assert(curr_d < Field::dim);
 
@@ -177,8 +180,10 @@ namespace samurai {
                  - static_cast<Number>(2.0/3.0)*sigma*Sigma_d;
 
     res(RHO_U_INDEX + curr_d) += p;
-    res(Mliq_Eliq_INDEX) += (alpha_liq*p_liq - static_cast<Number>(2.0/3.0)*sigma*chi_liq*Sigma_d)*vel_d;
-    res(Mg_Eg_INDEX) += (alpha_g*p_g - static_cast<Number>(2.0/3.0)*sigma*chi_g*Sigma_d)*vel_d;
+    if(pressure_work_energies) {
+      res(Mliq_Eliq_INDEX) += (alpha_liq*p_liq - static_cast<Number>(2.0/3.0)*sigma*chi_liq*Sigma_d)*vel_d;
+      res(Mg_Eg_INDEX) += (alpha_g*p_g - static_cast<Number>(2.0/3.0)*sigma*chi_g*Sigma_d)*vel_d;
+    }
 
     return res;
   }
