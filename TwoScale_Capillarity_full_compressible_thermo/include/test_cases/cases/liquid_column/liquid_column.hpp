@@ -112,8 +112,9 @@ private:
    * and to the auxiliary large-scale volume fraction field.
    *
    * Left  boundary: inlet BC (prescribed state via Inlet functor)
-   *                 alpha_l = alpha_residual for the auxiliary field.
+   *                 alpha_l = alpha_residual for the auxiliary field
    * Right boundary: homogeneous Neumann on all NVARS components (and on alpha_l).
+   * Homogeneous Neumann on the normal vector field.
    * @param ctx struct with all conserved and auxiliary fields
    * @param sigma surface tension coefficient
    * @param alpha_residual 'residual' volume fraction
@@ -388,4 +389,7 @@ void LiquidColumn<Traits, AuxFields>::apply_bcs(Context& ctx,
   // consistent with those imposed on ALPHA_l_INDEX of the conserved variables
   samurai::make_bc<Default>(ctx.alpha_l, alpha_residual)->on(left);
   samurai::make_bc<samurai::Neumann<1>>(ctx.alpha_l, static_cast<Number>(0.0))->on(right);
+  samurai::make_bc<samurai::Neumann<1>>(ctx.normal,
+                                        static_cast<Number>(0.0),
+                                        static_cast<Number>(0.0));
 }
