@@ -275,14 +275,15 @@ namespace samurai {
                                                  const auto c_g_loc     = EOS_phase_gas.c_value_RhoP(rho_g_loc, p_g_loc);
                                                  const auto Gamma_g_loc = EOS_phase_gas.Gruneisen_Rhoe(rho_g_loc, e_g_loc);
 
+                                                 const auto rho_Gamma_jump = (chi_liq_loc/Y_liq_loc)*rho_liq_loc*Gamma_liq_loc
+                                                                           - (chi_g_loc/Y_g_loc)*rho_g_loc*Gamma_g_loc;
+
                                                  const auto ddelta_p_dalpha_l = -m_l_loc*inv_alpha_l_loc*inv_alpha_l_loc*
-                                                                                c_liq_loc*c_liq_loc
+                                                                                (c_liq_loc*c_liq_loc - p_liq_loc/rho_liq_loc*Gamma_liq_loc)
                                                                                 -m_g_loc*inv_alpha_g_loc*inv_alpha_g_loc*
-                                                                                c_g_loc*c_g_loc*
+                                                                                (c_g_loc*c_g_loc - p_g_loc/rho_g_loc*Gamma_g_loc)*
                                                                                 m_liq_loc*inv_m_l_loc
-                                                                                -aux_SS*inv_rho_loc*
-                                                                                (rho_liq_loc*Gamma_liq_loc - rho_g_loc*Gamma_g_loc);
-                                                                                /* NOTE: Valid only for chi_k = Y_k */
+                                                                                -aux_SS*inv_rho_loc*rho_Gamma_jump;
                                                                                 // TODO: Add a check in case of zero volume fraction
                                                  const auto dF_LS_dalpha_l    = (delta_p - sigma*H_lim)
                                                                               + alpha_l_loc*ddelta_p_dalpha_l;
@@ -322,8 +323,6 @@ namespace samurai {
                                                      }
                                                    #endif
 
-                                                   /* TO DO: Add restrictions because of energies for SG-EOS */
-
                                                    /*--- No specific condition to impose for the positivity of alpha_d
                                                          since alpha_d = alpha_l*m_d/m_l and m_d is increasing,
                                                          m_l has already been imposed positive and alpha_l is going to
@@ -337,9 +336,8 @@ namespace samurai {
                                                  // Auxiliary partial derivatives
                                                  const auto ddelta_p_drhoz = -sigma*inv_rho_loc*
                                                                              std::cbrt(inv_rho_liq_loc*inv_rho_liq_loc)*
-                                                                             (rho_liq_loc*Gamma_liq_loc - rho_g_loc*Gamma_g_loc);
-                                                                             /* NOTE: Valid only for chi_k = Y_k */
-                                                 const auto dF_LS_drhoz    = alpha_liq_loc*ddelta_p_drhoz;
+                                                                             rho_Gamma_jump;
+                                                 const auto dF_LS_drhoz    = alpha_l_loc*ddelta_p_drhoz;
                                                  const auto dF_SS_drhoz    = static_cast<Number>(-2.0/3.0)*sigma*
                                                                              std::cbrt(inv_rho_liq_loc*inv_rho_liq_loc)
                                                                            + alpha_d_loc*ddelta_p_drhoz;
@@ -348,7 +346,6 @@ namespace samurai {
                                                  const auto ddelta_p_dmd = -m_g_loc*inv_alpha_g_loc*inv_alpha_g_loc*
                                                                            (c_g_loc*c_g_loc - p_g_loc/rho_g_loc*Gamma_g_loc)*
                                                                            inv_rho_liq_loc;
-                                                                           /* NOTE: Valid only for chi_k = Y_k */
                                                                            // TODO: Add a check in case of zero volume fraction
                                                  const auto dF_LS_dmd    = alpha_l_loc*ddelta_p_dmd;
                                                  const auto dF_SS_dmd    = (delta_p + m_d_loc*ddelta_p_dmd)*inv_rho_liq_loc;
@@ -361,8 +358,7 @@ namespace samurai {
                                                                            alpha_d_loc*inv_m_l_loc
                                                                          + static_cast<Number>(2.0/3.0)*sigma*rho_z_loc*inv_rho_loc*
                                                                            std::cbrt(inv_rho_liq_loc*inv_rho_liq_loc)*inv_m_l_loc*
-                                                                           (rho_liq_loc*Gamma_liq_loc - rho_g_loc*Gamma_g_loc);
-                                                                           /* NOTE: Valid only for chi_k = Y_k */
+                                                                           rho_Gamma_jump;
                                                                            // TODO: Add a check in case of zero volume fraction
                                                  const auto dF_LS_dml    = alpha_l_loc*ddelta_p_dml;
                                                  const auto dF_SS_dml    = (m_d_loc*ddelta_p_dml -
@@ -372,10 +368,8 @@ namespace samurai {
                                                  const auto dF_dml       = dF_LS_dml + dF_SS_dml;
 
                                                  const auto dF_de_star_liq = alpha_liq_loc*rho_liq_loc*Gamma_liq_loc;
-                                                                             /* NOTE: Valid only for chi_k = Y_k */
 
                                                  const auto dF_de_star_g = -alpha_liq_loc*rho_g_loc*Gamma_g_loc;
-                                                                           /* NOTE: Valid only for chi_k = Y_k */
 
                                                  // Auxiliary definitions
                                                  const auto r_ml = -m_l_loc*sigma*dH;
@@ -398,11 +392,19 @@ namespace samurai {
                                                                              rho*z/Sigma = rho_liq^(2/3)*/
 
                                                  const auto Y_l_loc = m_l_loc*inv_rho_loc;
-                                                 const auto A_liq   = chi_liq_loc*sigma*H_loc + pI_loc*Y_liq_loc/Y_l_loc;
-                                                 const auto A_g     = chi_g_loc*sigma*H_loc - pI_loc*Y_liq_loc/Y_l_loc;
+                                                 const auto A_liq   = -chi_liq_loc*sigma*H_loc - pI_loc*Y_liq_loc/Y_l_loc;
+                                                 const auto A_g     = -chi_g_loc*sigma*H_loc + pI_loc*Y_liq_loc/Y_l_loc;
                                                  const auto DF      = dF_dalpha_l
                                                                     + dF_de_star_liq*A_liq/m_liq_loc
                                                                     + dF_de_star_g*A_g/m_g_loc;
+
+                                                 // The bounds below assume 1 - dtau_ov_epsilon*DF > 0, not guaranteed a priori.
+                                                 // The polynomial bounds on alpha_l would already ensure it (up to the degenerate case),
+                                                 // but 1 - dtau_ov_epsilon*DF could be arbitrarily small:
+                                                 // we keep a margin to limit the amplification of F
+                                                 if(DF > static_cast<Number>(0.0)) {
+                                                   dtau_ov_epsilon = std::min(dtau_ov_epsilon, lambda/DF);
+                                                 }
 
                                                  // Bound-preserving condition for large-scale volume fraction
                                                  // Upper bound
@@ -412,7 +414,7 @@ namespace samurai {
                                                                           - static_cast<Number>(4.0)*a*
                                                                             (-lambda*(static_cast<Number>(1.0) - alpha_l_loc));
                                                  auto dtau_ov_epsilon_tmp = std::numeric_limits<Number>::infinity();
-                                                 if(D > static_cast<Number>(0.0) &&
+                                                 /*if(D > static_cast<Number>(0.0) &&
                                                     (a > static_cast<Number>(0.0) ||
                                                      (a < static_cast<Number>(0.0) &&
                                                       b > static_cast<Number>(0.0)))) {
@@ -421,6 +423,19 @@ namespace samurai {
                                                  if(a == static_cast<Number>(0.0) &&
                                                     b > static_cast<Number>(0.0)) {
                                                    dtau_ov_epsilon_tmp = lambda*(static_cast<Number>(1.0) - alpha_l_loc)/b;
+                                                 }*/
+                                                 if(D > static_cast<Number>(0.0) &&
+                                                    (a > static_cast<Number>(0.0) || b > static_cast<Number>(0.0))) {
+                                                    if(b >= static_cast<Number>(0.0)) {
+                                                      // Stable form, no cancellation, also a = 0 is included
+                                                      dtau_ov_epsilon_tmp = static_cast<Number>(2.0)*
+                                                                            (lambda*(static_cast<Number>(1.0) - alpha_l_loc))/
+                                                                            (b + std::sqrt(D));
+                                                    }
+                                                    else {
+                                                      // b < 0 (hence a > 0): -b + sqrt(D) is sum of two positive values
+                                                      dtau_ov_epsilon_tmp = static_cast<Number>(0.5)*(-b + std::sqrt(D))/a;
+                                                    }
                                                  }
                                                  dtau_ov_epsilon = std::min(dtau_ov_epsilon, dtau_ov_epsilon_tmp);
                                                  // Lower bound
@@ -428,7 +443,7 @@ namespace samurai {
                                                  b                   = F - lambda*alpha_l_loc*DF;
                                                  D                   = b*b
                                                                      - static_cast<Number>(4.0)*a*(lambda*alpha_l_loc);
-                                                 if(D > static_cast<Number>(0.0) &&
+                                                 /*if(D > static_cast<Number>(0.0) &&
                                                     (a < static_cast<Number>(0.0) ||
                                                      (a > static_cast<Number>(0.0) &&
                                                       b < static_cast<Number>(0.0)))) {
@@ -437,6 +452,19 @@ namespace samurai {
                                                  if(a == static_cast<Number>(0.0) &&
                                                     b < static_cast<Number>(0.0)) {
                                                    dtau_ov_epsilon_tmp = -lambda*alpha_l_loc/b;
+                                                 }*/
+                                                 if(D > static_cast<Number>(0.0) &&
+                                                    (a < static_cast<Number>(0.0) || b < static_cast<Number>(0.0))) {
+                                                    if(b <= static_cast<Number>(0.0)) {
+                                                      // Stable form, no cancellation, also a = 0 is included
+                                                      dtau_ov_epsilon_tmp = static_cast<Number>(2.0)*
+                                                                            (lambda*alpha_l_loc)/
+                                                                            (-b + std::sqrt(D));
+                                                    }
+                                                    else {
+                                                      // b > 0 (hence a < 0): -b - sqrt(D) is sum of two negative values
+                                                      dtau_ov_epsilon_tmp = static_cast<Number>(0.5)*(-b - std::sqrt(D))/a;
+                                                    }
                                                  }
                                                  dtau_ov_epsilon = std::min(dtau_ov_epsilon, dtau_ov_epsilon_tmp);
                                                  #ifdef DEBUG_RELAXATION
@@ -446,11 +474,65 @@ namespace samurai {
                                                    }
                                                  #endif
 
+                                                 // Thermodynamic admissibility for SG-EOS: check Q > 0, P_g > 0, P_liq > 0
+                                                 // at the candidate step and halve it otherwise (Q(0) > 0, P_k(0) > 0).
+                                                 // delta = 1 - dtau*DF is passed separately to handle also dtau -> inf
+                                                 const auto z_loc  = rho_z_loc*inv_rho_loc;
+                                                 const auto fac_z  = inv_rho_loc*(static_cast<Number>(3.0)*Hmax/kappa)*
+                                                                     std::cbrt(inv_rho_liq_loc);
+                                                 auto thermo_admissible = [&](const Number dtau, const Number delta) {
+                                                   const auto m_l_new       = m_l_loc + dtau*r_ml;
+                                                   const auto delta_F_new   = F + dtau*R; /*--- delta*F^{k+1} ---*/
+                                                   const auto delta_alpha_l = delta*alpha_l_loc + dtau*delta_F_new;
+                                                                              /*--- delta*alpha_l^{k+1} ---*/
+                                                   const auto z_new         = z_loc - dtau*r_ml*fac_z;
+                                                   const auto Q             = delta*m_l_new - m_liq_loc*delta_alpha_l;
+
+                                                   // P_k for phase k
+                                                   auto P = [&](const auto& EOS, const Number e_k, const Number m_k,
+                                                                const Number chi_ov_Y_k, const Number A_k, const Number B_k,
+                                                                const Number delta_m_l_ov_rho_k) {
+                                                     return delta*m_l_new*
+                                                            (e_k - EOS.get_q_infty() +
+                                                             sigma*chi_ov_Y_k*std::cbrt(inv_rho_liq_loc*inv_rho_liq_loc)*
+                                                             (z_loc - z_new/static_cast<Number>(3.0)) +
+                                                             dtau*B_k/m_k)
+                                                          + m_l_new*dtau*A_k*delta_F_new/m_k
+                                                          - static_cast<Number>(2.0/3.0)*sigma*chi_ov_Y_k*
+                                                            std::cbrt(rho_liq_loc)*z_new*delta_alpha_l
+                                                          - EOS.get_pi_infty()*delta_m_l_ov_rho_k;
+                                                   };
+
+                                                   return Q > static_cast<Number>(0.0) &&
+                                                          P(EOS_phase_liq, e_liq_loc, m_liq_loc, chi_liq_loc/Y_liq_loc,
+                                                            A_liq, B_liq, delta_alpha_l) > static_cast<Number>(0.0) &&
+                                                          P(EOS_phase_gas, e_g_loc, m_g_loc, chi_g_loc/Y_g_loc,
+                                                            A_g, B_g, Q/m_g_loc) > static_cast<Number>(0.0);
+                                                 };
+                                                 if(std::isinf(dtau_ov_epsilon) &&
+                                                    !thermo_admissible(static_cast<Number>(1.0), -DF)) {
+                                                   // Here dH = 0 (no mass transfer) and DF < 0: Q and P_k are
+                                                   // homogeneous of degree one in (dtau, delta), so (1, -DF) checks
+                                                   // the Newton step. If not admissible, restart from delta = 2
+                                                   dtau_ov_epsilon = static_cast<Number>(-1.0)/DF;
+                                                 }
+                                                 if(!std::isinf(dtau_ov_epsilon)) {
+                                                   std::size_t n_halving = 0;
+                                                   while(!thermo_admissible(dtau_ov_epsilon,
+                                                                            static_cast<Number>(1.0) - dtau_ov_epsilon*DF)) {
+                                                     if(++n_halving > 100) {
+                                                       throw std::runtime_error("No thermodynamically admissible time step "
+                                                                                "found inside Newton step");
+                                                     }
+                                                     dtau_ov_epsilon *= static_cast<Number>(0.5);
+                                                   }
+                                                 }
+
                                                  // Compute the effective variation of the variables
                                                  if(std::isinf(dtau_ov_epsilon)) {
                                                    // If we are in this branch we do not have mass transfer
                                                    // and we have no other restrictions on the bounds of large scale volume fraction
-                                                   dalpha_l_loc = -F/dF_dalpha_l; /* TO DO: Do I need to modify it? */
+                                                   dalpha_l_loc = -F/DF;
                                                  }
                                                  else {
                                                    const auto dm_l = dtau_ov_epsilon*r_ml;
