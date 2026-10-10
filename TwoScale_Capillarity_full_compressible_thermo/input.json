@@ -4,11 +4,12 @@
  "yL": 0.0,
  "yR": 2.0,
 
- "Tf": 2.5,
+ "Tf": 0.125,
 
  "sigma": 0.0,
 
  "apply_relaxation": true,
+ "instantaneous_relaxation": true,
  "mass_transfer": false,
  "Hmax": 40.0,
  "kappa": 1.0,

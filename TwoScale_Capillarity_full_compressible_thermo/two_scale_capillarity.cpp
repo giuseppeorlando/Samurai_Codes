@@ -37,6 +37,7 @@ int main(int argc, char* argv[]) {
   sim_param.sigma = input.value("sigma", static_cast<Number>(1e-2));
 
   sim_param.apply_relaxation = input.value("apply_relaxation", true);
+  sim_param.instantaneous_relaxation = input.value("instantaneous_relaxation", false);
   sim_param.mass_transfer    = input.value("mass_transfer", false);
   sim_param.Hmax             = input.value("Hmax", static_cast<Number>(40.0));
   sim_param.kappa            = input.value("kappa", static_cast<Number>(1.0));
@@ -85,6 +86,9 @@ int main(int argc, char* argv[]) {
 
   app.add_option("--apply_relaxation", sim_param.apply_relaxation,
                  "Apply or not relaxation")->capture_default_str()->group("Physical parameters");
+  app.add_option("--instantaneous_relaxation", sim_param.instantaneous_relaxation,
+                 "Use the instantaneous pressure relaxation p_liq = p_g (only for sigma = 0) "
+                 "instead of the Newton-based one")->capture_default_str()->group("Physical parameters");
   app.add_option("--mass_transfer", sim_param.mass_transfer,
                  "Choose whether to perform or not the mass transfer")->capture_default_str()->group("Physical parameters");
   app.add_option("--kappa", sim_param.kappa,

@@ -168,6 +168,9 @@ private:
 
   bool apply_relax; /*!< Choose whether to apply or not the relaxation */
 
+  const bool instantaneous_relax; /*!< Choose whether to apply the instantaneous pressure relaxation
+                                       (p_liq = p_g, only for sigma = 0) instead of the Newton-based one */
+
   const bool   mass_transfer; /*!< Choose whether to apply or not the mass transfer */
   const Number alpha_d_max;   /*!< Maximum threshold of small-scale volume fraction */
   const Number alpha_l_min;   /*!< Minimum large-scale volume fraction to identify the mixture region */
@@ -295,6 +298,12 @@ private:
   void apply_relaxation(auto& relaxation_op);
 
   /**
+   * Apply the instantaneous pressure relaxation (valid only for sigma = 0)
+   * @param inst_relaxation_op numerical operator (cell-based scheme) for instantaneous pressure relaxation
+   */
+  void apply_instantaneous_relaxation(auto& inst_relaxation_op);
+
+  /**
    * Execute the postprocessing
    * @param time current time
    */
@@ -316,6 +325,7 @@ TwoScaleCapillarity<dim>::TwoScaleCapillarity(const xt::xtensor_fixed<double, xt
   box(min_corner, max_corner),
   t0(sim_param.t0), Tf(sim_param.Tf), sigma(sim_param.sigma),
   apply_relax(sim_param.apply_relaxation),
+  instantaneous_relax(sim_param.instantaneous_relaxation),
   mass_transfer(sim_param.mass_transfer),
   alpha_d_max(sim_param.alpha_d_max),
   alpha_l_min(sim_param.alpha_l_min), alpha_l_max(sim_param.alpha_l_max),
@@ -350,6 +360,12 @@ TwoScaleCapillarity<dim>::TwoScaleCapillarity(const xt::xtensor_fixed<double, xt
       std::cout << "Initializing variables " << std::endl;
       std::cout << std::endl;
     #endif
+
+    // The instantaneous pressure relaxation neglects capillarity
+    if(apply_relax && instantaneous_relax && sigma != static_cast<Number>(0.0)) {
+      std::cerr << "The instantaneous pressure relaxation is valid only for sigma = 0" << std::endl;
+      exit(1);
+    }
 
     // Attach the fields to the mesh
     create_fields();
@@ -953,6 +969,26 @@ void TwoScaleCapillarity<dim>::apply_relaxation(auto& relaxation_op) {
   }
 }
 
+// Apply the instantaneous pressure relaxation (valid only for sigma = 0)
+//
+template<std::size_t dim>
+void TwoScaleCapillarity<dim>::apply_instantaneous_relaxation(auto& inst_relaxation_op) {
+  try {
+    int_energy_variables_tmp = inst_relaxation_op(int_energy_variables);
+    samurai::swap(int_energy_variables, int_energy_variables_tmp);
+  }
+  catch(const std::exception& e) {
+    std::cerr << e.what() << std::endl;
+    save("_diverged",
+         int_energy_variables,
+         grad_alpha_l, normal, H);
+    exit(1);
+  }
+
+  // Recompute geometric quantities (volume fraction changed)
+  update_geometry();
+}
+
 /************************************************************
 ******* FOCUS NOW ON THE POSTPROCESSING FUNCTIONS ***********
 *************************************************************/
@@ -1126,6 +1162,10 @@ void TwoScaleCapillarity<dim>::run(const std::string& num_flux_hyp,
     filename += "_order1";
   #endif
 
+  if(apply_relax && instantaneous_relax) {
+    filename += "_inst_relax";
+  }
+
   if(mass_transfer) {
     filename += "_mass_transfer";
   }
@@ -1151,6 +1191,7 @@ void TwoScaleCapillarity<dim>::run(const std::string& num_flux_hyp,
   auto relaxation_op = Relaxation_operator.make_Newton_step_relaxation(H, dalpha_l, alpha_l,
                                                                        to_be_relaxed, Newton_iterations,
                                                                        grad_alpha_l);
+  auto inst_relaxation_op = Relaxation_operator.make_instantaneous_pressure_relaxation(alpha_l);
 
   // Save the initial condition
   const std::string suffix_init = (nfiles != 1) ? "_ite_" + Utilities::unsigned_to_string(0) : "";
@@ -1239,8 +1280,13 @@ void TwoScaleCapillarity<dim>::run(const std::string& num_flux_hyp,
       dalpha_l.resize();
       to_be_relaxed.resize();
       Newton_iterations.resize();
-      update_geometry(false);
-      apply_relaxation(relaxation_op);
+      if(instantaneous_relax) {
+        apply_instantaneous_relaxation(inst_relaxation_op);
+      }
+      else {
+        update_geometry(false);
+        apply_relaxation(relaxation_op);
+      }
     }
 
     // Move back to total-energy formulation (either for output or for second stage)
@@ -1283,9 +1329,14 @@ void TwoScaleCapillarity<dim>::run(const std::string& num_flux_hyp,
                                   }
                               );
 
-        update_geometry(false);
         // Apply relaxation if desired, which will modify alpha_l (as well as grad_alpha_l).
-        apply_relaxation(relaxation_op);
+        if(instantaneous_relax) {
+          apply_instantaneous_relaxation(inst_relaxation_op);
+        }
+        else {
+          update_geometry(false);
+          apply_relaxation(relaxation_op);
+        }
 
         // Move back to total-energy formulation to conclude
         samurai::for_each_cell(mesh,

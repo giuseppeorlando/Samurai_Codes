@@ -71,6 +71,15 @@ namespace samurai {
                                      Field_Scalar_Unsigned& to_be_relaxed,
                                      Field_Scalar_Unsigned& Newton_iterations,
                                      Field_Vect& grad_alpha_l);
+
+    /**
+     * Perform an instantaneous pressure relaxation p_liq = p_g (linearization method Pelanti based)
+     * for a state vector in internal-energy formulation. Valid only for sigma = 0
+     * @param alpha_l volume fraction
+     */
+    template<class Field_Scalar>
+    auto make_instantaneous_pressure_relaxation(Field_Scalar& alpha_l);
+
     /**
      * Set the value of the flag to check whether relaxation has been applied
      * @param global_relaxation_applied flag to check whether relaxation has been applied
@@ -641,10 +650,102 @@ namespace samurai {
                                                   std::cerr << "p_g_loc_res = " << p_g_loc_res << std::endl;
                                                   throw std::runtime_error("Non admissible gas pressure inside Newton step");
                                                }
-
-                                               /* TO DO: delta_tau < lambda/(2*(|D| + eps))
-                                                         delta_tau < lambda*|F|/(2*(|R| + eps)) ---*/
                                              }
+                                           });
+
+    return relaxation_step;
+  }
+
+  // Implement the instantaneous relaxation for the pressure (linearization method Pelanti based),
+  // following the one in Six_Equations with phase 1 = liquid (large + small scale) and phase 2 = gas.
+  // Since sigma = 0, the internal-energy formulation stores m_liq*e_liq and m_g*e_g.
+  // The ratio alpha_d/alpha_l = m_d/m_l is preserved, so that alpha_l = alpha_liq*m_l/m_liq.
+  //
+  template<class Field>
+  template<class Field_Scalar>
+  auto RelaxationOperator<Field>::make_instantaneous_pressure_relaxation(Field_Scalar& alpha_l) {
+    auto relaxation_step = samurai::make_cell_based_scheme<typename RelaxationOperator::cfg>();
+    relaxation_step.set_name("Instantaneous pressure relaxation");
+    relaxation_step.set_scheme_function([&](samurai::SchemeValue<cfg>& result, const auto& cell, const auto& field)
+                                           {
+                                             const auto local_field = field[cell];
+                                             result = field[cell];
+
+                                             // Pre-fetch variables used multiple times to exploit possible vectorization
+                                             const auto m_l_loc   = local_field(Ml_INDEX);
+                                             const auto m_g_loc   = local_field(Mg_INDEX);
+                                             const auto m_d_loc   = local_field(Md_INDEX);
+                                             const auto m_liq_loc = m_l_loc + m_d_loc;
+
+                                             const auto alpha_l_loc = local_field(ALPHA_l_INDEX);
+                                             auto alpha_liq_loc     = alpha_l_loc*m_liq_loc/m_l_loc;
+                                                                      // TODO: Add a check in case of zero volume fraction
+                                             const auto alpha_g_loc = static_cast<Number>(1.0) - alpha_liq_loc;
+
+                                             // Compute initial values of the pressure (i.e. after hyperbolic operator)
+                                             const auto e_liq_0_loc = local_field(Mliq_Eliq_INDEX)/m_liq_loc;
+                                             const auto e_g_0_loc   = local_field(Mg_Eg_INDEX)/m_g_loc;
+
+                                             const auto rho_liq_loc = m_liq_loc/alpha_liq_loc;
+                                                                      // TODO: Add a check in case of zero volume fraction
+                                             const auto p_liq_loc   = EOS_phase_liq.pres_value_Rhoe(rho_liq_loc, e_liq_0_loc);
+                                             const auto c_liq_loc   = EOS_phase_liq.c_value_RhoP(rho_liq_loc, p_liq_loc);
+
+                                             const auto rho_g_loc = m_g_loc/alpha_g_loc;
+                                                                    // TODO: Add a check in case of zero volume fraction
+                                             const auto p_g_loc   = EOS_phase_gas.pres_value_Rhoe(rho_g_loc, e_g_0_loc);
+                                             const auto c_g_loc   = EOS_phase_gas.c_value_RhoP(rho_g_loc, p_g_loc);
+
+                                             // Compute the pressure equilibrium with the linearization method (Pelanti)
+                                             const auto gamma_liq    = EOS_phase_liq.get_gamma();
+                                             const auto gamma_g      = EOS_phase_gas.get_gamma();
+                                             const auto pi_infty_liq = EOS_phase_liq.get_pi_infty();
+                                             const auto pi_infty_g   = EOS_phase_gas.get_pi_infty();
+
+                                             const auto a     = static_cast<Number>(1.0)
+                                                              + gamma_g*alpha_liq_loc
+                                                              + gamma_liq*alpha_g_loc;
+                                             const auto Z_liq = rho_liq_loc*c_liq_loc;
+                                             const auto Z_g   = rho_g_loc*c_g_loc;
+                                             const auto pI_0  = (Z_g*p_liq_loc + Z_liq*p_g_loc)/(Z_liq + Z_g);
+                                             const auto C_liq = static_cast<Number>(2.0)*gamma_liq*pi_infty_liq
+                                                              + (gamma_liq - static_cast<Number>(1.0))*pI_0;
+                                             const auto C_g   = static_cast<Number>(2.0)*gamma_g*pi_infty_g
+                                                              + (gamma_g - static_cast<Number>(1.0))*pI_0;
+                                             const auto b     = C_liq*alpha_g_loc + C_g*alpha_liq_loc
+                                                              - (static_cast<Number>(1.0) + gamma_g)*alpha_liq_loc*p_liq_loc
+                                                              - (static_cast<Number>(1.0) + gamma_liq)*alpha_g_loc*p_g_loc;
+                                             const auto d     = -(C_g*alpha_liq_loc*p_liq_loc + C_liq*alpha_g_loc*p_g_loc);
+
+                                             const auto p_star = (-b + std::sqrt(b*b - static_cast<Number>(4.0)*a*d))/
+                                                                 (static_cast<Number>(2.0)*a);
+
+                                             // Update the volume fraction using the computed pressure
+                                             alpha_liq_loc *= ((gamma_liq - static_cast<Number>(1.0))*p_star +
+                                                               static_cast<Number>(2.0)*p_liq_loc + C_liq)/
+                                                              ((gamma_liq + static_cast<Number>(1.0))*p_star + C_liq);
+                                             #ifdef DEBUG_RELAXATION
+                                               if(std::isnan(p_star) ||
+                                                  alpha_liq_loc < static_cast<Number>(0.0) ||
+                                                  alpha_liq_loc > static_cast<Number>(1.0)) {
+                                                 std::cerr << "p_liq = " << p_liq_loc << ", p_g = " << p_g_loc
+                                                           << ", p_star = " << p_star << ", alpha_liq = " << alpha_liq_loc << std::endl;
+                                                 throw std::runtime_error("Non admissible state in the instantaneous pressure relaxation");
+                                               }
+                                             #endif
+                                             const auto alpha_l_new_loc = alpha_liq_loc*m_l_loc/m_liq_loc;
+                                             alpha_l[cell]              = alpha_l_new_loc;
+                                             result(ALPHA_l_INDEX)      = alpha_l_new_loc;
+
+                                             // Update the internal energy of both phases
+                                             result(Mliq_Eliq_INDEX) = m_liq_loc*
+                                                                       EOS_phase_liq.e_value_RhoP(m_liq_loc/alpha_liq_loc, p_star);
+                                                                       // TODO: Add a check in case of zero volume fraction
+                                             result(Mg_Eg_INDEX)     = m_g_loc*
+                                                                       EOS_phase_gas.e_value_RhoP(m_g_loc/
+                                                                                                  (static_cast<Number>(1.0) - alpha_liq_loc)
+                                                                                                  p_star);
+                                                                       // TODO: Add a check in case of zero volume fraction
                                            });
 
     return relaxation_step;

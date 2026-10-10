@@ -12,7 +12,7 @@
 #include "../utilities.hpp"
 
 /*--- Preprocessor to define whether order 2 is desired ---*/
-//#define ORDER_2
+#define ORDER_2
 
 namespace samurai {
   using namespace EquationData;

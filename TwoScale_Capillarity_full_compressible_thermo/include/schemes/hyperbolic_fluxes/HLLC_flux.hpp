@@ -421,9 +421,6 @@ namespace samurai {
         throw std::runtime_error(std::string("Non admissible liquid pressure left state: " + std::to_string(p_liq_L)));
       }
       if(std::isnan(c_g_L)) {
-        std::cout << e_g_L << std::endl;
-        std::cout << m_g_L << std::endl;
-        std::cout << norm2_vel_L << std::endl;
         throw std::runtime_error(std::string("Non admissible gas pressure left state: " + std::to_string(p_g_L)));
       }
 

@@ -23,6 +23,7 @@ struct Simulation_Parameters {
   T sigma;
 
   bool apply_relaxation;
+  bool instantaneous_relaxation;
   bool mass_transfer;
   T    Hmax;
   T    kappa;
