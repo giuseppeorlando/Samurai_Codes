@@ -36,14 +36,14 @@ int main(int argc, char* argv[]) {
 
   sim_param.sigma = input.value("sigma", static_cast<Number>(1e-2));
 
-  sim_param.apply_relaxation = input.value("apply_relaxation", true);
+  sim_param.apply_relaxation         = input.value("apply_relaxation", true);
   sim_param.instantaneous_relaxation = input.value("instantaneous_relaxation", false);
-  sim_param.mass_transfer    = input.value("mass_transfer", false);
-  sim_param.Hmax             = input.value("Hmax", static_cast<Number>(40.0));
-  sim_param.kappa            = input.value("kappa", static_cast<Number>(1.0));
-  sim_param.alpha_d_max      = input.value("alpha_d_max", static_cast<Number>(0.5));
-  sim_param.alpha_l_min      = input.value("alpha_l_min", static_cast<Number>(0.01));
-  sim_param.alpha_l_max      = input.value("alpha_l_max", static_cast<Number>(0.1));
+  sim_param.mass_transfer            = input.value("mass_transfer", false);
+  sim_param.Hmax                     = input.value("Hmax", static_cast<Number>(40.0));
+  sim_param.kappa                    = input.value("kappa", static_cast<Number>(1.0));
+  sim_param.alpha_d_max              = input.value("alpha_d_max", static_cast<Number>(0.5));
+  sim_param.alpha_l_min              = input.value("alpha_l_min", static_cast<Number>(0.01));
+  sim_param.alpha_l_max              = input.value("alpha_l_max", static_cast<Number>(0.1));
 
   // Numerical parameters
   sim_param.num_flux_hyp = input.value("num_flux_hyp", "HLLC");
