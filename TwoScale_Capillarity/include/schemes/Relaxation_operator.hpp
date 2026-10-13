@@ -185,11 +185,13 @@ namespace samurai {
 
                                                // Update auxiliary values affected by the nonlinear function for which we seek a zero
                                                const auto alpha1_loc = alpha1_bar_loc*(static_cast<Number>(1.0) - alpha1_d_loc);
-                                               const auto rho1_loc   = m1_loc/alpha1_loc; // TODO: Add a check in case of zero volume fraction
+                                               const auto rho1_loc   = m1_loc/alpha1_loc;
+                                                                       // TODO: Add a check in case of zero volume fraction
                                                const auto p1_loc     = EOS_phase1.pres_value(rho1_loc);
 
                                                const auto alpha2_loc = static_cast<Number>(1.0) - alpha1_loc - alpha1_d_loc;
-                                               const auto rho2_loc   = m2_loc/alpha2_loc; // TODO: Add a check in case of zero volume fraction
+                                               const auto rho2_loc   = m2_loc/alpha2_loc;
+                                                                       // TODO: Add a check in case of zero volume fraction
                                                const auto p2_loc     = EOS_phase2.pres_value(rho2_loc);
 
                                                const auto rho1d_loc     = (m1_d_loc > static_cast<Number>(0.0) &&
@@ -205,7 +207,8 @@ namespace samurai {
                                                const auto p_bar_loc = alpha1_bar_loc*p1_loc
                                                                     + alpha2_bar_loc*p2_loc;
                                                const auto p2_minus_p1_times_theta = rho1_loc/alpha2_bar_loc*
-                                                                                    (EOS_phase1.e_value(rho1d_loc) - EOS_phase1.e_value(rho1_loc) +
+                                                                                    (EOS_phase1.e_value(rho1d_loc) -
+                                                                                     EOS_phase1.e_value(rho1_loc) +
                                                                                      p_bar_loc*inv_rho1d_loc - p1_loc/rho1_loc) -
                                                                                     (p2_loc - p1_loc);
                                                Number H_lim = std::min(H_bar_loc, Hmax);
@@ -236,13 +239,15 @@ namespace samurai {
                                                             - sigma*H_lim;
 
                                                // Perform the relaxation only where really needed
-                                               if((std::abs(F) > atol_Newton + rtol_Newton*std::min(EOS_phase1.get_p0(), sigma*std::abs(H_lim)) &&
+                                               if((std::abs(F) > atol_Newton +
+                                                                 rtol_Newton*std::min(EOS_phase1.get_p0(), sigma*std::abs(H_lim)) &&
                                                    std::abs(dalpha1_bar_loc) > atol_Newton) || dH > rtol_Newton*Hmax) {
                                                  to_be_relaxed[cell] = 1;
                                                  Newton_iterations[cell]++;
                                                  relaxation_applied = true;
 
-                                                 // Compute the derivative w.r.t large scale volume fraction recalling that for a barotropic EOS dp/drho = c^2
+                                                 // Compute the derivative w.r.t large scale volume fraction
+                                                 // recalling that for a barotropic EOS dp/drho = c^2
                                                  const auto c1_loc = EOS_phase1.c_value(rho1_loc);
                                                  const auto c2_loc = EOS_phase2.c_value(rho2_loc);
 
@@ -251,7 +256,8 @@ namespace samurai {
                                                                              -m2_loc/(alpha2_bar_loc*alpha2_bar_loc)*
                                                                               c2_loc*c2_loc;
 
-                                                 // Compute the pseudo time step starting as initial guess from the ideal unmodified Newton method
+                                                 // Compute the pseudo time step starting as initial guess
+                                                 // from the ideal unmodified Newton method
                                                  auto dtau_ov_epsilon = std::numeric_limits<Number>::infinity();
 
                                                  // Bound-preserving condition for m1, velocity and small-scale volume fraction
@@ -260,13 +266,15 @@ namespace samurai {
                                                    dtau_ov_epsilon = lambda*(alpha1_loc*alpha2_bar_loc)/(sigma*dH);
                                                    #ifdef DEBUG_RELAXATION
                                                      if(dtau_ov_epsilon < static_cast<Number>(0.0)) {
-                                                       throw std::runtime_error("Negative time step found after relaxation of mass of large-scale phase 1");
+                                                       throw std::runtime_error("Negative time step found after relaxation "
+                                                                                "of mass of large-scale phase 1");
                                                      }
                                                    #endif
 
                                                    // Bound preserving for the velocity
                                                    const auto mom_dot_vel   = (local_field(RHO_U_INDEX)*local_field(RHO_U_INDEX) +
-                                                                               local_field(RHO_U_INDEX + 1)*local_field(RHO_U_INDEX + 1))/rho_loc;
+                                                                               local_field(RHO_U_INDEX + 1)*
+                                                                               local_field(RHO_U_INDEX + 1))/rho_loc;
                                                    auto dtau_ov_epsilon_tmp = lambda*mom_dot_vel/(dH*fac_Ru*sigma);
                                                    dtau_ov_epsilon          = std::min(dtau_ov_epsilon, dtau_ov_epsilon_tmp);
                                                    #ifdef DEBUG_RELAXATION
@@ -287,16 +295,20 @@ namespace samurai {
                                                    }
                                                    #ifdef DEBUG_RELAXATION
                                                      if(dtau_ov_epsilon < static_cast<Number>(0.0)) {
-                                                       throw std::runtime_error("Negative time step found after relaxation of small-scale volume fraction");
+                                                       throw std::runtime_error("Negative time step found after relaxation "
+                                                                                "of small-scale volume fraction");
                                                      }
                                                    #endif
                                                  }
 
                                                  // Bound-preserving condition for large-scale volume fraction
                                                  const auto dF_dalpha1d   = p2_loc - p1_loc
-                                                                          + EOS_phase1.c_value(rho1_loc)*EOS_phase1.c_value(rho1_loc)*rho1_loc
-                                                                          - EOS_phase2.c_value(rho2_loc)*EOS_phase2.c_value(rho2_loc)*rho2_loc;
-                                                 const auto dF_dm1        = EOS_phase1.c_value(rho1_loc)*EOS_phase1.c_value(rho1_loc)/alpha1_bar_loc;
+                                                                          + EOS_phase1.c_value(rho1_loc)*EOS_phase1.c_value(rho1_loc)*
+                                                                            rho1_loc
+                                                                          - EOS_phase2.c_value(rho2_loc)*EOS_phase2.c_value(rho2_loc)*
+                                                                            rho2_loc;
+                                                 const auto dF_dm1        = EOS_phase1.c_value(rho1_loc)*EOS_phase1.c_value(rho1_loc)/
+                                                                            alpha1_bar_loc;
                                                  const auto R             = dF_dalpha1d*inv_rho1d_loc - dF_dm1;
                                                  const auto a             = rho1_loc*sigma*dH*R/
                                                                             (alpha2_bar_loc*(static_cast<Number>(1.0) - alpha1_d_loc));
@@ -332,7 +344,8 @@ namespace samurai {
                                                  dtau_ov_epsilon = std::min(dtau_ov_epsilon, dtau_ov_epsilon_tmp);
                                                  #ifdef DEBUG_RELAXATION
                                                    if(dtau_ov_epsilon < static_cast<Number>(0.0)) {
-                                                     throw std::runtime_error("Negative time step found after relaxation of large-scale volume fraction");
+                                                     throw std::runtime_error("Negative time step found after relaxation "
+                                                                              "of large-scale volume fraction");
                                                    }
                                                  #endif
 
@@ -377,7 +390,8 @@ namespace samurai {
 
                                                    #ifdef DEBUG_RELAXATION
                                                      if(alpha1_d_loc - dm1*inv_rho1d_loc > static_cast<Number>(1.0)) {
-                                                       throw std::runtime_error("Exceeding value for small-scale volume fraction inside Newton step");
+                                                       throw std::runtime_error("Exceeding value for small-scale volume fraction "
+                                                                                "inside Newton step");
                                                      }
                                                    #endif
                                                    result(ALPHA1_D_INDEX) -= dm1*inv_rho1d_loc;
@@ -388,7 +402,8 @@ namespace samurai {
                                                                           + local_field(RHO_U_INDEX + 1)*local_field(RHO_U_INDEX + 1);
                                                    const auto drho_fac_Ru = dtau_ov_epsilon*
                                                                             sigma*dH*fac_Ru*rho_loc/mom_squared;
-                                                                            /*--- u/u^{2} = rho*u/(rho*(u^{2})) = (rho/(rho*u)^{2})*(rho*u) ---*/
+                                                                            /*--- u/u^{2} = rho*u/(rho*(u^{2}))
+                                                                                          = (rho/(rho*u)^{2})*(rho*u) ---*/
 
                                                    for(std::size_t d = 0; d < Field::dim; ++d) {
                                                      result(RHO_U_INDEX + d) -= drho_fac_Ru*result(RHO_U_INDEX + d);
@@ -403,7 +418,8 @@ namespace samurai {
                                                    if(alpha1_bar_loc + dalpha1_bar_loc < static_cast<Number>(0.0) ||
                                                       alpha1_bar_loc + dalpha1_bar_loc > static_cast<Number>(1.0)) {
                                                      // I should never get here. Added only for the sake of safety!!
-                                                     throw std::runtime_error("Bounds exceeding value for large-scale volume fraction inside Newton step");
+                                                     throw std::runtime_error("Bounds exceeding value for large-scale volume fraction "
+                                                                              "inside Newton step");
                                                    }
                                                  #endif
                                                  alpha1_bar_loc += dalpha1_bar_loc;

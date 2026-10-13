@@ -251,7 +251,8 @@ void LiquidColumn<Traits, AuxFields>::init_variables(Context& ctx,
                               ctx.aux.alpha_d[cell]                      = static_cast<Number>(0.0);
                               ctx.conserved_variables[cell](RHO_Z_INDEX) = static_cast<Number>(0.0);
                               const auto rho_liq_ref                     = ctx.EOS_phase_liq.get_rho0();
-                              ctx.aux.Sigma_d[cell]                      = ctx.conserved_variables[cell](RHO_Z_INDEX)/std::cbrt(rho_liq_ref*rho_liq_ref);
+                              ctx.aux.Sigma_d[cell]                      = ctx.conserved_variables[cell](RHO_Z_INDEX)/
+                                                                           std::cbrt(rho_liq_ref*rho_liq_ref);
                               ctx.conserved_variables[cell](Md_INDEX)    = ctx.aux.alpha_d[cell]*rho_liq_ref;
 
                               // Recompute geometric locations to set partial masses

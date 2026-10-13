@@ -228,7 +228,8 @@ namespace samurai {
                               + (static_cast<Number>(1.0) - alpha1_bar_R)*this->EOS_phase2.pres_value(rho2_R);
 
     if(p_star <= p0_L || p_bar_L <= p0_L) {
-      throw std::runtime_error("Non-admissible value for the pressure at the beginning of the Newton method to compute p* in Godunov solver");
+      throw std::runtime_error("Non-admissible value for the pressure at the beginning of the Newton method "
+                               "to compute p* in Godunov solver");
     }
 
     auto F_p_star = dvel_d;
@@ -348,7 +349,8 @@ namespace samurai {
         throw std::runtime_error(std::string("Negative mass small-scale phase 1 left state: " + std::to_string(m1_d_L)));
       }
       if(rho_alpha1_bar_L < static_cast<Number>(0.0)) {
-        throw std::runtime_error(std::string("Negative large-scale volume fraction phase 1 left state: " + std::to_string(rho_alpha1_bar_L)));
+        throw std::runtime_error(std::string("Negative large-scale volume fraction phase 1 left state: " +
+                                             std::to_string(rho_alpha1_bar_L)));
       }
       if(alpha1_d_L < static_cast<Number>(0.0)) {
         throw std::runtime_error(std::string("Negative small-scale volume fraction phase 1 left state: " + std::to_string(alpha1_d_L)));
@@ -367,7 +369,8 @@ namespace samurai {
         throw std::runtime_error(std::string("Negative mass small-scale phase 1 right state: " + std::to_string(m1_d_R)));
       }
       if(rho_alpha1_bar_R < static_cast<Number>(0.0)) {
-        throw std::runtime_error(std::string("Negative large-scale volume fraction phase 1 right state: " + std::to_string(rho_alpha1_bar_R)));
+        throw std::runtime_error(std::string("Negative large-scale volume fraction phase 1 right state: " +
+                                             std::to_string(rho_alpha1_bar_R)));
       }
       if(alpha1_d_R < static_cast<Number>(0.0)) {
         throw std::runtime_error(std::string("Negative small-scale volume fraction phase 1 right state: " + std::to_string(alpha1_d_R)));

@@ -191,8 +191,10 @@ private:
   std::unique_ptr<TestCaseBase<Traits, AuxFields>> test_case; /*!< Auxiliary variable to configure the test case */
 
   HyperbolicFlux<Field> Hyperbolic_flux; /*!< Auxiliary variable to compute the contribution associated with hyperbolic operator */
-  samurai::SurfaceTensionFlux<Field, Field_Vect> SurfaceTension_flux; /*!< Auxiliary variable to compute the contribution associated with surface tension */
-  samurai::RelaxationOperator<Field> Relaxation_operator; /*!< Auxiliary variable to compute the contribution associated with source term (relaxation) */
+  samurai::SurfaceTensionFlux<Field, Field_Vect> SurfaceTension_flux; /*!< Auxiliary variable to compute the contribution
+                                                                           associated with surface tension */
+  samurai::RelaxationOperator<Field> Relaxation_operator; /*!< Auxiliary variable to compute the contribution
+                                                               associated with source term (relaxation) */
 
   fs::path    path;     /*!< Auxiliary variable to store the output directory */
   std::string filename; /*!< Auxiliary variable to store the name of output */
@@ -806,7 +808,8 @@ void TwoScaleCapillarity<dim>::execute_postprocess(const Number time) {
                               const auto& local_conserved_variables = conserved_variables[cell];
 
                               const auto alpha_l_loc       = alpha_l[cell];
-                              const auto alpha_d_loc       = alpha_l_loc*local_conserved_variables(Md_INDEX)/local_conserved_variables(Ml_INDEX);
+                              const auto alpha_d_loc       = alpha_l_loc*local_conserved_variables(Md_INDEX)/
+                                                             local_conserved_variables(Ml_INDEX);
                               aux_fields.alpha_d[cell]     = alpha_d_loc;
                               aux_fields.alpha_l_bar[cell] = alpha_l_loc/(static_cast<Number>(1.0) - alpha_d_loc);
                             }

@@ -39,7 +39,8 @@ namespace samurai {
   public:
     // Definitions and sanity checks
     static_assert(Field::dim == EquationData::dim, "The spatial dimensions between Field and the parameter list do not match");
-    static_assert(Field::n_comp == EquationData::NVARS, "The number of elements in the state does not correspond to the number of equations");
+    static_assert(Field::n_comp == EquationData::NVARS,
+                  "The number of elements in the state does not correspond to the number of equations");
     #ifdef ORDER_2
       static constexpr std::size_t stencil_size = 4;
     #else
@@ -401,7 +402,8 @@ namespace samurai {
         alpha1_bar += dalpha1_bar;
       }
 
-      // Update the vector of conserved variables (probably not the optimal choice since I need this update only at the end of the Newton loop,
+      // Update the vector of conserved variables (probably not the optimal choice
+      // since I need this update only at the end of the Newton loop,
       // but the most coherent one thinking about the transfer of mass)
       conserved_variables(RHO_ALPHA1_BAR_INDEX) = (m1 + m2 + m1_d)*alpha1_bar;
     }

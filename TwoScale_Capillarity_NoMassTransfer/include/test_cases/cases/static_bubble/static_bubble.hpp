@@ -171,7 +171,8 @@ void StaticBubble<Traits, AuxFields>::init_variables(Context& ctx,
                                                   (static_cast<Number>(1.0) +
                                                    std::tanh(static_cast<Number>(-8.0)*
                                                              ((r - R + static_cast<Number>(0.5)*eps_R)/eps_R - static_cast<Number>(0.5)))) :
-                                                  ((r < R - static_cast<Number>(0.5)*eps_R) ? static_cast<Number>(1.0) : static_cast<Number>(0.0));
+                                                  ((r < R - static_cast<Number>(0.5)*eps_R) ? static_cast<Number>(1.0) :
+                                                                                              static_cast<Number>(0.0));
 
                               ctx.alpha1[cell] = std::min(std::max(alpha_residual, w),
                                                           static_cast<Number>(1.0) - alpha_residual);

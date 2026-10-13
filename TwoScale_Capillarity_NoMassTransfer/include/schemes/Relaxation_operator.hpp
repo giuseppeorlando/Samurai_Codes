@@ -149,13 +149,15 @@ namespace samurai {
                                                const auto F = p1_loc - p2_loc - sigma*H_loc;
 
                                                // Perform the relaxation only where really needed
-                                               if(std::abs(F) > atol_Newton + rtol_Newton*std::min(EOS_phase1.get_p0(), sigma*std::abs(H_loc)) &&
+                                               if(std::abs(F) > atol_Newton +
+                                                                rtol_Newton*std::min(EOS_phase1.get_p0(), sigma*std::abs(H_loc)) &&
                                                   std::abs(dalpha1[cell]) > atol_Newton) {
                                                  to_be_relaxed[cell] = 1;
                                                  Newton_iterations[cell]++;
                                                  relaxation_applied = true;
 
-                                                 // Compute the derivative w.r.t large-scale volume fraction recalling that for a barotropic EOS dp/drho = c^2
+                                                 // Compute the derivative w.r.t large-scale volume fraction
+                                                 // recalling that for a barotropic EOS dp/drho = c^2
                                                  const auto c1_loc = EOS_phase1.c_value(rho1_loc);
                                                  const auto c2_loc = EOS_phase2.c_value(rho2_loc);
 
@@ -178,7 +180,8 @@ namespace samurai {
                                                    if(alpha1_loc + dalpha1_loc < static_cast<Number>(0.0) ||
                                                       alpha1_loc + dalpha1_loc > static_cast<Number>(1.0)) {
                                                         // I should never get here. Added only for the sake of safety!!
-                                                        throw std::runtime_error("Bounds exceeding value for large-scale volume fraction inside Newton step ");
+                                                        throw std::runtime_error("Bounds exceeding value for large-scale volume fraction "
+                                                                                 "inside Newton step ");
                                                    }
                                                  #endif
                                                  alpha1_loc += dalpha1_loc;
@@ -186,7 +189,8 @@ namespace samurai {
                                                }
 
                                                // Update the vector of conserved variables
-                                               // (probably not the optimal choice since I need this update only at the end of the Newton loop)
+                                               // (probably not the optimal choice since I need this update
+                                               // only at the end of the Newton loop)
                                                result(RHO_ALPHA1_INDEX) = (m1_loc + m2_loc)*alpha1_loc;
                                              }
                                            });

@@ -175,7 +175,8 @@ void AcousticWave<Traits, AuxFields>::init_variables(Context& ctx,
                               const auto x      = static_cast<Number>(center[0]);
 
                               ctx.alpha1[cell] = (static_cast<Number>(1.0) - static_cast<Number>(1e-7))
-                                               + (static_cast<Number>(1e-7) - static_cast<Number>(1e-4))*CHeaviside(x_interface - x, eps_interface);
+                                               + (static_cast<Number>(1e-7) - static_cast<Number>(1e-4))*
+                                                 CHeaviside(x_interface - x, eps_interface);
 
                               // Set mass phase 1
                               ctx.aux.p1[cell] = static_cast<Number>(1e5);
@@ -217,15 +218,18 @@ void AcousticWave<Traits, AuxFields>::init_variables(Context& ctx,
                               ctx.aux.c_frozen[cell] = std::sqrt((ctx.conserved_variables[cell][M1_INDEX]*
                                                                   ctx.EOS_phase1.c_value(rho1_loc)*ctx.EOS_phase1.c_value(rho1_loc) +
                                                                   ctx.conserved_variables[cell][M2_INDEX]*
-                                                                  ctx.EOS_phase2.c_value(rho2_loc)*ctx.EOS_phase2.c_value(rho2_loc))/rho_loc);
+                                                                  ctx.EOS_phase2.c_value(rho2_loc)*
+                                                                  ctx.EOS_phase2.c_value(rho2_loc))/rho_loc);
 
                               // Compute Wood speed of sound for post-processing
                               ctx.aux.c_Wood[cell]  = std::sqrt(static_cast<Number>(1.0)/
                                                                 (rho_loc*
                                                                  (ctx.alpha1[cell]/
-                                                                  (rho1_loc*ctx.EOS_phase1.c_value(rho1_loc)*ctx.EOS_phase1.c_value(rho1_loc)) +
+                                                                  (rho1_loc*ctx.EOS_phase1.c_value(rho1_loc)*
+                                                                   ctx.EOS_phase1.c_value(rho1_loc)) +
                                                                   (static_cast<Number>(1.0) - ctx.alpha1[cell])/
-                                                                  (rho2_loc*ctx.EOS_phase2.c_value(rho2_loc)*ctx.EOS_phase2.c_value(rho2_loc)))));
+                                                                  (rho2_loc*ctx.EOS_phase2.c_value(rho2_loc)*
+                                                                   ctx.EOS_phase2.c_value(rho2_loc)))));
 
                             }
                         );

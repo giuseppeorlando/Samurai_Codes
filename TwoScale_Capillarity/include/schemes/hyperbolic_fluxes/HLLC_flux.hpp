@@ -170,7 +170,8 @@ namespace samurai {
         throw std::runtime_error(std::string("Negative mass small-scale phase 1 left state: " + std::to_string(m1_d_L)));
       }
       if(rho_alpha1_bar_L < static_cast<Number>(0.0)) {
-        throw std::runtime_error(std::string("Negative large-scale volume fraction phase 1 left state: " + std::to_string(rho_alpha1_bar_L)));
+        throw std::runtime_error(std::string("Negative large-scale volume fraction phase 1 left state: " +
+                                             std::to_string(rho_alpha1_bar_L)));
       }
       if(alpha1_d_L < static_cast<Number>(0.0)) {
         throw std::runtime_error(std::string("Negative small-scale volume fraction phase 1 left state: " + std::to_string(alpha1_d_L)));
@@ -189,7 +190,8 @@ namespace samurai {
         throw std::runtime_error(std::string("Negative mass small-scale phase 1 right state: " + std::to_string(m1_d_R)));
       }
       if(rho_alpha1_bar_R < static_cast<Number>(0.0)) {
-        throw std::runtime_error(std::string("Negative large-scale volume fraction phase 1 right state: " + std::to_string(rho_alpha1_bar_R)));
+        throw std::runtime_error(std::string("Negative large-scale volume fraction phase 1 right state: " +
+                                             std::to_string(rho_alpha1_bar_R)));
       }
       if(alpha1_d_R < static_cast<Number>(0.0)) {
         throw std::runtime_error(std::string("Negative small-scale volume fraction phase 1 right state: " + std::to_string(alpha1_d_R)));

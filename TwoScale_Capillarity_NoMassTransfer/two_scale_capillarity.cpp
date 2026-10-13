@@ -84,7 +84,8 @@ int main(int argc, char* argv[]) {
 
   app.add_option("--sigma", sim_param.sigma, "Surface tension coefficient")->capture_default_str()->group("Physical parameters");
 
-  app.add_option("--apply_relaxation", sim_param.apply_relaxation, "Apply or not relaxation")->capture_default_str()->group("Physical parameters");
+  app.add_option("--apply_relaxation", sim_param.apply_relaxation,
+                 "Apply or not relaxation")->capture_default_str()->group("Physical parameters");
 
   // Numerical parameters
   app.add_option("--num_flux_hyp", sim_param.num_flux_hyp,
@@ -92,7 +93,8 @@ int main(int argc, char* argv[]) {
 
   app.add_option("--cfl", sim_param.Courant, "The Courant number")->capture_default_str()->group("Numerical parameters");
 
-  app.add_option("--alpha_residual", sim_param.alpha_residual, "Residual large scale volume fraction")->capture_default_str()->group("Numerical parameters");
+  app.add_option("--alpha_residual", sim_param.alpha_residual,
+                 "Residual large scale volume fraction")->capture_default_str()->group("Numerical parameters");
   app.add_option("--mod_grad_alpha1_min", sim_param.mod_grad_alpha1_min,
                  "Tolerance for zero gradient volume fraction")->capture_default_str()->group("Numerical parameters");
 
@@ -105,9 +107,11 @@ int main(int argc, char* argv[]) {
   app.add_option("--max_Newton_iters", sim_param.max_Newton_iters,
                  "Maximum number of Newton iterations")->capture_default_str()->group("Numerical parameters");
   app.add_option("--atol_Newton_p_star", sim_param.atol_Newton_p_star,
-                 "Absolute tolerance of Newton method to compute p* for the exact solver")->capture_default_str()->group("Numerical parameters");
+                 "Absolute tolerance of Newton method to compute p* for the exact solver")
+                 ->capture_default_str()->group("Numerical parameters");
   app.add_option("--rtol_Newton_p_star", sim_param.rtol_Newton_p_star,
-                 "Relative tolerance of Newton method to compute p* for the exact solver")->capture_default_str()->group("Numerical parameters");
+                 "Relative tolerance of Newton method to compute p* for the exact solver")
+                 ->capture_default_str()->group("Numerical parameters");
 
   // MR parameters
   app.add_option("--min-level", sim_param.min_level, "Minimum level of the AMR")->capture_default_str()->group("AMR parameter");

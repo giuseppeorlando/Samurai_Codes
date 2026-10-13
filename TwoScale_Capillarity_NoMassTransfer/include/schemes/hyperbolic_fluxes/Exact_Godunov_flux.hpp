@@ -156,7 +156,8 @@ namespace samurai {
                               + alpha2_R*this->EOS_phase2.pres_value(rho2_R);
 
     if(p_star <= p0_L || p_L <= p0_L) {
-      throw std::runtime_error("Non-admissible value for the pressure at the beginning of the Newton method to compute p* in Godunov solver");
+      throw std::runtime_error("Non-admissible value for the pressure at the beginning of the Newton method "
+                               "to compute p* in Godunov solver");
     }
 
     auto F_p_star = dvel_d;

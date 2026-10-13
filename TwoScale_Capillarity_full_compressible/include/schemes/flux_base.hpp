@@ -30,7 +30,8 @@ namespace samurai {
   public:
     // Definitions and sanity checks
     static_assert(Field::dim == EquationData::dim, "The spatial dimensions between Field and the parameter list do not match");
-    static_assert(Field::n_comp == EquationData::NVARS, "The number of elements in the state does not correspond to the number of equations");
+    static_assert(Field::n_comp == EquationData::NVARS,
+                  "The number of elements in the state does not correspond to the number of equations");
     #ifdef ORDER_2
       static constexpr std::size_t stencil_size = 4;
     #else
@@ -421,7 +422,8 @@ namespace samurai {
             if(alpha_l + dalpha_l < static_cast<Number>(0.0) ||
                alpha_l + dalpha_l > static_cast<Number>(1.0)) {
               // I should never get here. Added only for the sake of safety!!
-              throw std::runtime_error("Bounds exceeding value for large-scale liquid volume fraction inside Newton step of reconstruction");
+              throw std::runtime_error("Bounds exceeding value for large-scale liquid volume fraction "
+                                       "inside Newton step of reconstruction");
             }
           #endif
           alpha_l += dalpha_l;

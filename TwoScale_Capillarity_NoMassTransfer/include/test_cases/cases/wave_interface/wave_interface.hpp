@@ -175,8 +175,10 @@ void WaveInterface<Traits, AuxFields>::init_variables(Context& ctx,
                               const auto x      = static_cast<Number>(center[0]);
 
                               ctx.alpha1[cell] = static_cast<Number>(1e-7)
-                                               + (static_cast<Number>(1.0) - static_cast<Number>(2e-7))*CHeaviside(x_interface - x, eps_interface)
-                                               + (static_cast<Number>(0.999999997719987) - static_cast<Number>(1.0) + static_cast<Number>(1e-7))*
+                                               + (static_cast<Number>(1.0) - static_cast<Number>(2e-7))*
+                                                 CHeaviside(x_interface - x, eps_interface)
+                                               + (static_cast<Number>(0.999999997719987) - static_cast<Number>(1.0) +
+                                                  static_cast<Number>(1e-7))*
                                                  CHeaviside(x_shock - x , eps_shock);
 
                               // Set mass phase 1
@@ -188,7 +190,8 @@ void WaveInterface<Traits, AuxFields>::init_variables(Context& ctx,
                                 rho1_loc = static_cast<Number>(1000.0);
                               }
                               //const auto rho1_loc = static_cast<Number>(1000.0)
-                              //                    + (static_cast<Number>(1001.8658) - static_cast<Number>(1000.0))*CHeaviside(x_shock - x, eps_shock);
+                              //                    + (static_cast<Number>(1001.8658) - static_cast<Number>(1000.0))*
+                              //                      CHeaviside(x_shock - x, eps_shock);
                               ctx.aux.p1[cell] = ctx.EOS_phase1.pres_value(rho1_loc);
                               ctx.conserved_variables[cell][M1_INDEX] = ctx.alpha1[cell]*rho1_loc;
 
@@ -225,15 +228,18 @@ void WaveInterface<Traits, AuxFields>::init_variables(Context& ctx,
                               ctx.aux.c_frozen[cell] = std::sqrt((ctx.conserved_variables[cell][M1_INDEX]*
                                                                   ctx.EOS_phase1.c_value(rho1_loc)*ctx.EOS_phase1.c_value(rho1_loc) +
                                                                   ctx.conserved_variables[cell][M2_INDEX]*
-                                                                  ctx.EOS_phase2.c_value(rho2_loc)*ctx.EOS_phase2.c_value(rho2_loc))/rho_loc);
+                                                                  ctx.EOS_phase2.c_value(rho2_loc)*
+                                                                  ctx.EOS_phase2.c_value(rho2_loc))/rho_loc);
 
                               // Compute Wood speed of sound for post-processing
                               ctx.aux.c_Wood[cell]  = std::sqrt(static_cast<Number>(1.0)/
                                                                 (rho_loc*
                                                                  (ctx.alpha1[cell]/
-                                                                  (rho1_loc*ctx.EOS_phase1.c_value(rho1_loc)*ctx.EOS_phase1.c_value(rho1_loc)) +
+                                                                  (rho1_loc*ctx.EOS_phase1.c_value(rho1_loc)*
+                                                                   ctx.EOS_phase1.c_value(rho1_loc)) +
                                                                   (static_cast<Number>(1.0) - ctx.alpha1[cell])/
-                                                                  (rho2_loc*ctx.EOS_phase2.c_value(rho2_loc)*ctx.EOS_phase2.c_value(rho2_loc)))));
+                                                                  (rho2_loc*ctx.EOS_phase2.c_value(rho2_loc)*
+                                                                   ctx.EOS_phase2.c_value(rho2_loc)))));
 
                             }
                         );
