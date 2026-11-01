@@ -107,12 +107,14 @@ private:
   /**
    * Attach boundary conditions to the conserved variable field.
    *
-   * Left  boundary: inlet BC (prescribed state via Inlet functor).
-   * Right boundary: homogeneous Neumann on all NVARS components.
+   * Left  boundary: inlet BC (prescribed state via Inlet functor)
+   *                 alpha_l = alpha_residual for the auxiliary field
+   * Right boundary: homogeneous Neumann on all NVARS components (and on alpha_l).
+   * Homogeneous Neumann on the normal vector field.
    * @param conserved_variables field with conserved state
    * @param alpha_residual 'residual' volume fraction
    */
-  void apply_bcs(Field& conserved_variables,
+  void apply_bcs(Context& ctx,
                  const Number alpha_residual);
 
   Number x0, y0;     /*!< Center of the liquid column */
@@ -174,7 +176,7 @@ void LiquidColumn<Traits, AuxFields>::setup(Context& ctx) {
   };
 
   this->bc_fn = [this, &ctx, alpha_residual]() {
-    apply_bcs(ctx.conserved_variables, alpha_residual);
+    apply_bcs(ctx, alpha_residual);
   };
 }
 
@@ -360,18 +362,18 @@ void LiquidColumn<Traits, AuxFields>::init_variables(Context& ctx,
 // Apply boundary conditions
 //
 template<typename Traits, typename AuxFields>
-void LiquidColumn<Traits, AuxFields>::apply_bcs(Field& conserved_variables,
+void LiquidColumn<Traits, AuxFields>::apply_bcs(Context& ctx,
                                                 const Number alpha_residual) {
   // Left boundary: prescribed inlet condition
   const samurai::DirectionVector<Field::dim> left = {-1, 0};
-  samurai::make_bc<Default>(conserved_variables,
-                            Inlet(conserved_variables, U0, V0, alpha_residual,
+  samurai::make_bc<Default>(ctx.conserved_variables,
+                            Inlet(ctx.conserved_variables, U0, V0, alpha_residual,
                                   static_cast<Number>(0.0),
                                   static_cast<Number>(0.0)))->on(left);
 
   // Right boundary: homogeneous Neumann (free outflow)
   const samurai::DirectionVector<Field::dim> right = {1, 0};
-  samurai::make_bc<samurai::Neumann<1>>(conserved_variables,
+  samurai::make_bc<samurai::Neumann<1>>(ctx.conserved_variables,
                                         static_cast<Number>(0.0),
                                         static_cast<Number>(0.0),
                                         static_cast<Number>(0.0),
@@ -379,4 +381,12 @@ void LiquidColumn<Traits, AuxFields>::apply_bcs(Field& conserved_variables,
                                         static_cast<Number>(0.0),
                                         static_cast<Number>(0.0),
                                         static_cast<Number>(0.0))->on(right);
+
+  // Boundary conditions for the auxiliary large-scale volume fraction (employed to compute its gradient)
+  samurai::make_bc<Default>(ctx.alpha_l, alpha_residual)->on(left);
+  samurai::make_bc<samurai::Neumann<1>>(ctx.alpha_l, static_cast<Number>(0.0))->on(right);
+  // Boundary conditions for the unit normal vector (employed to compute the curvature) for the sake of safety
+  samurai::make_bc<samurai::Neumann<1>>(ctx.normal,
+                                        static_cast<Number>(0.0),
+                                        static_cast<Number>(0.0));
 }

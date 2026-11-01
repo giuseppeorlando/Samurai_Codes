@@ -309,6 +309,10 @@ TwoScaleCapillarity<dim>::TwoScaleCapillarity(const xt::xtensor_fixed<double, xt
     if(sim_param.restart_file.empty()) {
       mesh = {box, sim_param.min_level, sim_param.max_level, {{false, true}}};
 
+      // Apply boundary conditions before initialization
+      // (so that the initial gradient of alpha_l already employs them)
+      apply_bcs(sim_param.U0, sim_param.V0, sim_param.alpha_residual);
+
       init_variables(sim_param.x0, sim_param.y0,
                      sim_param.U0, sim_param.U1,
                      sim_param.V0,
@@ -323,10 +327,10 @@ TwoScaleCapillarity<dim>::TwoScaleCapillarity(const xt::xtensor_fixed<double, xt
                                                   alpha1, grad_alpha1,
                                                   Newton_iterations);
       // TO DO: Likely periodic bcs will not work
-    }
 
-    // Apply boundary conditions
-    apply_bcs(sim_param.U0, sim_param.V0, sim_param.alpha_residual);
+      // Apply boundary conditions
+      apply_bcs(sim_param.U0, sim_param.V0, sim_param.alpha_residual);
+    }
   }
 
 // Auxiliary routine to create the fields
@@ -557,6 +561,13 @@ void TwoScaleCapillarity<dim>::apply_bcs(const Number U0,
                                         static_cast<Number>(0.0),
                                         static_cast<Number>(0.0),
                                         static_cast<Number>(0.0))->on(bottom);*/
+  
+  samurai::make_bc<Default>(alpha1_bar, alpha_residual)->on(left);
+  samurai::make_bc<samurai::Neumann<1>>(alpha1_bar, static_cast<Number>(0.0))->on(right);
+  // Boundary conditions for the unit normal vector (employed to compute the curvature) for the sake of safety
+  samurai::make_bc<samurai::Neumann<1>>(normal,
+                                        static_cast<Number>(0.0),
+                                        static_cast<Number>(0.0));
 }
 
 /************************************************************

@@ -317,7 +317,7 @@ namespace samurai {
                                                                             (static_cast<Number>(1.0) - alpha1_d_loc);
                                                  auto D                   = b*b - static_cast<Number>(4.0)*a*(-lambda*alpha2_bar_loc);
                                                  auto dtau_ov_epsilon_tmp = std::numeric_limits<Number>::infinity();
-                                                 if(D > static_cast<Number>(0.0) &&
+                                                 /*if(D > static_cast<Number>(0.0) &&
                                                     (a > static_cast<Number>(0.0) ||
                                                     (a < static_cast<Number>(0.0) && b > static_cast<Number>(0.0)))) {
                                                    dtau_ov_epsilon_tmp = static_cast<Number>(0.5)*(-b + std::sqrt(D))/a;
@@ -325,6 +325,19 @@ namespace samurai {
                                                  if(a == static_cast<Number>(0.0) &&
                                                     b > static_cast<Number>(0.0)) {
                                                    dtau_ov_epsilon_tmp = lambda*alpha2_bar_loc/b;
+                                                 }*/
+                                                 if(D > static_cast<Number>(0.0) &&
+                                                    (a > static_cast<Number>(0.0) || b > static_cast<Number>(0.0))) {
+                                                    if(b >= static_cast<Number>(0.0)) {
+                                                      // Stable form, no cancellation, also a = 0 is included
+                                                      dtau_ov_epsilon_tmp = static_cast<Number>(2.0)*
+                                                                            (lambda*alpha2_bar_loc)/
+                                                                            (b + std::sqrt(D));
+                                                    }
+                                                    else {
+                                                      // b < 0 (hence a > 0): -b + sqrt(D) is sum of two positive values
+                                                      dtau_ov_epsilon_tmp = static_cast<Number>(0.5)*(-b + std::sqrt(D))/a;
+                                                    }
                                                  }
                                                  dtau_ov_epsilon = std::min(dtau_ov_epsilon, dtau_ov_epsilon_tmp);
                                                  // Lower bound
@@ -332,7 +345,7 @@ namespace samurai {
                                                  b                   = (F - lambda*alpha1_bar_loc*dF_dalpha1_bar)/
                                                                        (static_cast<Number>(1.0) - alpha1_d_loc);
                                                  D                   = b*b - static_cast<Number>(4.0)*a*(lambda*alpha1_bar_loc);
-                                                 if(D > static_cast<Number>(0.0) &&
+                                                 /*if(D > static_cast<Number>(0.0) &&
                                                     (a < static_cast<Number>(0.0) ||
                                                     (a > static_cast<Number>(0.0) && b < static_cast<Number>(0.0)))) {
                                                    dtau_ov_epsilon_tmp = static_cast<Number>(0.5)*(-b - std::sqrt(D))/a;
@@ -340,6 +353,19 @@ namespace samurai {
                                                  if(a == static_cast<Number>(0.0) &&
                                                     b < static_cast<Number>(0.0)) {
                                                    dtau_ov_epsilon_tmp = -lambda*alpha1_bar_loc/b;
+                                                 }*/
+                                                 if(D > static_cast<Number>(0.0) &&
+                                                    (a < static_cast<Number>(0.0) || b < static_cast<Number>(0.0))) {
+                                                    if(b <= static_cast<Number>(0.0)) {
+                                                      // Stable form, no cancellation, also a = 0 is included
+                                                      dtau_ov_epsilon_tmp = static_cast<Number>(2.0)*
+                                                                            (lambda*alpha1_bar_loc)/
+                                                                            (-b + std::sqrt(D));
+                                                    }
+                                                    else {
+                                                      // b > 0 (hence a < 0): -b - sqrt(D) is sum of two negative values
+                                                      dtau_ov_epsilon_tmp = static_cast<Number>(0.5)*(-b - std::sqrt(D))/a;
+                                                    }
                                                  }
                                                  dtau_ov_epsilon = std::min(dtau_ov_epsilon, dtau_ov_epsilon_tmp);
                                                  #ifdef DEBUG_RELAXATION

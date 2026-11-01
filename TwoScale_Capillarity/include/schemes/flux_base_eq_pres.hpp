@@ -32,6 +32,17 @@ namespace samurai {
   using namespace EquationData;
 
   /**
+   * Stencil size of the numerical fluxes. It is defined outside the Flux class
+   * (which can be instantiated only with the field of conserved variables)
+   * so that it can be employed also elsewhere (e.g. boundary conditions for scalar fields)
+   */
+  #ifdef ORDER_2
+    inline static constexpr std::size_t flux_stencil_size = 4;
+  #else
+    inline static constexpr std::size_t flux_stencil_size = 2;
+  #endif
+
+  /**
    * Generic class to compute the flux between a left and right state
    */
   template<class Field>
@@ -41,11 +52,7 @@ namespace samurai {
     static_assert(Field::dim == EquationData::dim, "The spatial dimensions between Field and the parameter list do not match");
     static_assert(Field::n_comp == EquationData::NVARS,
                   "The number of elements in the state does not correspond to the number of equations");
-    #ifdef ORDER_2
-      static constexpr std::size_t stencil_size = 4;
-    #else
-      static constexpr std::size_t stencil_size = 2;
-    #endif
+    static constexpr std::size_t stencil_size = flux_stencil_size;
 
     using cfg = FluxConfig<SchemeType::NonLinear, stencil_size, Field, Field>;
 

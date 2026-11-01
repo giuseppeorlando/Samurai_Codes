@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
   sim_param.rtol_Newton_p_star  = input.value("rtol_Newton_p_star", static_cast<Number>(1e-8));
   sim_param.tol_Newton_alpha1_d = input.value("tol_Newton_alpha1_d", static_cast<Number>(1e-8));
 
-  // MR paramters
+  // MR parameters
   sim_param.min_level     = input.value("min-level", static_cast<std::size_t>(8));
   sim_param.max_level     = input.value("max-level", static_cast<std::size_t>(8));
   sim_param.MR_param      = input.value("MR_param", static_cast<double>(1e-1));
@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
   app.add_option("--mass_transfer", sim_param.mass_transfer,
                  "Choose whether to perform or not the mass transfer")->capture_default_str()->group("Physical parameters");
   app.add_option("--kappa", sim_param.kappa,
-                 "Small-scale disperse phase raidus with rispect to maximum curvature")
+                 "Small-scale disperse phase radius with respect to maximum curvature")
                  ->capture_default_str()->group("Physical parameters");
   app.add_option("--Hmax", sim_param.Hmax,
                  "Maximum curvature before activating atomization")->capture_default_str()->group("Physical parameters");
@@ -145,10 +145,12 @@ int main(int argc, char* argv[]) {
                  ->capture_default_str()->group("Numerical parameters");
 
   // MR parameters
-  app.add_option("--min-level", sim_param.min_level, "Minimum level of the AMR")->capture_default_str()->group("AMR parameter");
-  app.add_option("--max-level", sim_param.max_level, "Maximum level of the AMR")->capture_default_str()->group("AMR parameter");
-  app.add_option("--MR_param", sim_param.MR_param, "Multiresolution parameter")->capture_default_str()->group("AMR parameter");
-  app.add_option("--MR_regularity", sim_param.MR_regularity, "Multiresolution regularity")->capture_default_str()->group("AMR parameter");
+  app.add_option("--min-level", sim_param.min_level, "Minimum level of the MR")->capture_default_str()->group("Mesh parameters");
+  app.add_option("--max-level", sim_param.max_level, "Maximum level of the MR")->capture_default_str()->group("Mesh parameters");
+  /*app.add_option("--MR_param", sim_param.MR_param,
+                   "Multiresolution parameter")->capture_default_str()->group("Multiresolution parameters");
+  app.add_option("--MR_regularity", sim_param.MR_regularity,
+                 "Multiresolution regularity")->capture_default_str()->group("Multiresolution parameters");*/
 
   // Output parameters
   app.add_option("--save-dir", sim_param.save_dir, "Output directory")->capture_default_str()->group("Output parameters");
@@ -172,10 +174,10 @@ int main(int argc, char* argv[]) {
   eos_param.c0_phase2   = input.value("c0_phase2", static_cast<Number>(1e1));
 
   app.add_option("--p0_phase1", eos_param.p0_phase1, "p0_phase1")->capture_default_str()->group("EOS parameters");
-  app.add_option("--rho0_phase1", eos_param.p0_phase1, "rho0_phase1")->capture_default_str()->group("EOS parameters");
+  app.add_option("--rho0_phase1", eos_param.rho0_phase1, "rho0_phase1")->capture_default_str()->group("EOS parameters");
   app.add_option("--c0_phase1", eos_param.c0_phase1, "c0_phase1")->capture_default_str()->group("EOS parameters");
   app.add_option("--p0_phase2", eos_param.p0_phase2, "p0_phase2")->capture_default_str()->group("EOS parameters");
-  app.add_option("--rho0_phase2", eos_param.p0_phase2, "rho0_phase2")->capture_default_str()->group("EOS parameters");
+  app.add_option("--rho0_phase2", eos_param.rho0_phase2, "rho0_phase2")->capture_default_str()->group("EOS parameters");
   app.add_option("--c0_phase2", eos_param.c0_phase2, "c0_phase2")->capture_default_str()->group("EOS parameters");
 
   /*--- Create the instance of the class to perform the simulation ---*/

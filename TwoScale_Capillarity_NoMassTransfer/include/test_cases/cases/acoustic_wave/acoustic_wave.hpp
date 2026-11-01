@@ -88,9 +88,10 @@ private:
   /**
    * Attach boundary conditions to the conserved variable field.
    *
-   * @param conserved_variables field with conserved state
+   * Homogeneous Neumann on all NVARS components and on alpha1.
+   * @param ctx struct with all conserved and auxiliary fields
    */
-  void apply_bcs(Field& conserved_variables);
+  void apply_bcs(Context& ctx);
 
   /**
    * Compute regularized Heaviside
@@ -135,7 +136,7 @@ AcousticWave<Traits, AuxFields>::AcousticWave(const std::string& param_file) {
   }
 }
 
-// setup(): assemble init_fn and bc_fnfrom the solver context
+// setup(): assemble init_fn and bc_fn from the solver context
 //
 template<typename Traits, typename AuxFields>
 void AcousticWave<Traits, AuxFields>::setup(Context& ctx) {
@@ -152,7 +153,7 @@ void AcousticWave<Traits, AuxFields>::setup(Context& ctx) {
 
   this->bc_fn = [this, &ctx]()
                 {
-                  apply_bcs(ctx.conserved_variables);
+                  apply_bcs(ctx);
                 };
 }
 
@@ -264,16 +265,19 @@ void AcousticWave<Traits, AuxFields>::init_variables(Context& ctx,
 // Apply boundary conditions
 //
 template<typename Traits, typename AuxFields>
-void AcousticWave<Traits, AuxFields>::apply_bcs(Field& conserved_variables) {
+void AcousticWave<Traits, AuxFields>::apply_bcs(Context& ctx) {
   // Homogeneous Neumann (free outflow)
-  samurai::make_bc<samurai::Neumann<1>>(conserved_variables,
+  samurai::make_bc<samurai::Neumann<1>>(ctx.conserved_variables,
                                         static_cast<Number>(0.0),
                                         static_cast<Number>(0.0),
                                         static_cast<Number>(0.0),
                                         static_cast<Number>(0.0));
+
+  // Boundary conditions for the large-scale volume fraction (employed to compute its gradient)
+  samurai::make_bc<samurai::Neumann<1>>(ctx.alpha1, static_cast<Number>(0.0));
 }
 
-// setup(): assemble init_fn and bc_fnfrom the solver context
+// Compute regularized Heaviside
 //
 template<typename Traits, typename AuxFields>
 template<typename T>

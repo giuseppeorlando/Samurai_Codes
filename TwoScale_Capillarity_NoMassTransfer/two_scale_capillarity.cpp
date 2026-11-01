@@ -114,10 +114,12 @@ int main(int argc, char* argv[]) {
                  ->capture_default_str()->group("Numerical parameters");
 
   // MR parameters
-  app.add_option("--min-level", sim_param.min_level, "Minimum level of the AMR")->capture_default_str()->group("AMR parameter");
-  app.add_option("--max-level", sim_param.max_level, "Maximum level of the AMR")->capture_default_str()->group("AMR parameter");
-  app.add_option("--MR_param", sim_param.MR_param, "Multiresolution parameter")->capture_default_str()->group("AMR parameter");
-  app.add_option("--MR_regularity", sim_param.MR_regularity, "Multiresolution regularity")->capture_default_str()->group("AMR parameter");
+  app.add_option("--min-level", sim_param.min_level, "Minimum level of the MR")->capture_default_str()->group("Mesh parameters");
+  app.add_option("--max-level", sim_param.max_level, "Maximum level of the MR")->capture_default_str()->group("Mesh parameters");
+  /*app.add_option("--MR_param", sim_param.MR_param,
+                   "Multiresolution parameter")->capture_default_str()->group("Multiresolution parameters");
+  app.add_option("--MR_regularity", sim_param.MR_regularity,
+                 "Multiresolution regularity")->capture_default_str()->group("Multiresolution parameters");*/
 
   // Output parameters
   app.add_option("--save-dir", sim_param.save_dir, "Output directory")->capture_default_str()->group("Output parameters");
@@ -138,10 +140,10 @@ int main(int argc, char* argv[]) {
   eos_param.c0_phase2   = input.value("c0_phase2", static_cast<Number>(1e1));
 
   app.add_option("--p0_phase1", eos_param.p0_phase1, "p0_phase1")->capture_default_str()->group("EOS parameters");
-  app.add_option("--rho0_phase1", eos_param.p0_phase1, "rho0_phase1")->capture_default_str()->group("EOS parameters");
+  app.add_option("--rho0_phase1", eos_param.rho0_phase1, "rho0_phase1")->capture_default_str()->group("EOS parameters");
   app.add_option("--c0_phase1", eos_param.c0_phase1, "c0_phase1")->capture_default_str()->group("EOS parameters");
   app.add_option("--p0_phase2", eos_param.p0_phase2, "p0_phase2")->capture_default_str()->group("EOS parameters");
-  app.add_option("--rho0_phase2", eos_param.p0_phase2, "rho0_phase2")->capture_default_str()->group("EOS parameters");
+  app.add_option("--rho0_phase2", eos_param.rho0_phase2, "rho0_phase2")->capture_default_str()->group("EOS parameters");
   app.add_option("--c0_phase2", eos_param.c0_phase2, "c0_phase2")->capture_default_str()->group("EOS parameters");
 
   /*--- Create the instance of the class to perform the simulation ---*/

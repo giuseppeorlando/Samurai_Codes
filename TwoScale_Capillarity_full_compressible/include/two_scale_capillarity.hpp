@@ -382,6 +382,9 @@ TwoScaleCapillarity<dim>::TwoScaleCapillarity(const xt::xtensor_fixed<double, xt
       ctx.params["alpha_residual"] = sim_param.alpha_residual;
       ctx.params["mod_grad_alpha_l_min"] = mod_grad_alpha_l_min;
       test_case->setup(ctx);
+      // Apply boundary conditions before initialization
+      // (so that the initial gradient of alpha_l already employs them)
+      test_case->bc_fn();
       test_case->init_fn();
     }
     else {
@@ -393,10 +396,10 @@ TwoScaleCapillarity<dim>::TwoScaleCapillarity(const xt::xtensor_fixed<double, xt
                                                   aux_fields.alpha_l_bar, aux_fields.grad_alpha_l_bar, aux_fields.H_bar,
                                                   aux_fields.Mach);
       // TO DO: Likely periodic bcs will not work
-    }
 
-    // Apply boundary conditions
-    test_case->bc_fn();
+      // Apply boundary conditions
+      test_case->bc_fn();
+    }
   }
 
 // Auxiliary routine to create the fields

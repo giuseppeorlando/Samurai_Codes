@@ -18,13 +18,13 @@ using namespace EquationData;
  */
 template<class Field>
 struct Default: public samurai::Bc<Field> {
-  INIT_BC(Default, samurai::Flux<Field>::stencil_size)
+  INIT_BC(Default, samurai::flux_stencil_size)
 
   inline stencil_t get_stencil(constant_stencil_size_t) const override {
     #ifdef ORDER_2
-      return samurai::line_stencil_from<Field::dim, 0, samurai::Flux<Field>::stencil_size>(-1);
+      return samurai::line_stencil_from<Field::dim, 0, samurai::flux_stencil_size>(-1);
     #else
-      return samurai::line_stencil_from<Field::dim, 0, samurai::Flux<Field>::stencil_size>(0);
+      return samurai::line_stencil_from<Field::dim, 0, samurai::flux_stencil_size>(0);
     #endif
   }
 

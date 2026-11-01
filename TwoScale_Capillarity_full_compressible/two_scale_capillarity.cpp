@@ -127,10 +127,12 @@ int main(int argc, char* argv[]) {
                  "Maximum number of Newton iterations")->capture_default_str()->group("Numerical parameters");
 
   // MR parameters
-  app.add_option("--min-level", sim_param.min_level, "Minimum level of the AMR")->capture_default_str()->group("AMR parameter");
-  app.add_option("--max-level", sim_param.max_level, "Maximum level of the AMR")->capture_default_str()->group("AMR parameter");
-  app.add_option("--MR_param", sim_param.MR_param, "Multiresolution parameter")->capture_default_str()->group("AMR parameter");
-  app.add_option("--MR_regularity", sim_param.MR_regularity, "Multiresolution regularity")->capture_default_str()->group("AMR parameter");
+  app.add_option("--min-level", sim_param.min_level, "Minimum level of the MR")->capture_default_str()->group("Mesh parameters");
+  app.add_option("--max-level", sim_param.max_level, "Maximum level of the MR")->capture_default_str()->group("Mesh parameters");
+  /*app.add_option("--MR_param", sim_param.MR_param,
+                   "Multiresolution parameter")->capture_default_str()->group("Multiresolution parameters");
+  app.add_option("--MR_regularity", sim_param.MR_regularity,
+                 "Multiresolution regularity")->capture_default_str()->group("Multiresolution parameters");*/
 
   // Output parameters
   app.add_option("--save-dir", sim_param.save_dir, "Output directory")->capture_default_str()->group("Output parameters");
