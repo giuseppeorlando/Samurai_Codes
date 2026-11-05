@@ -23,9 +23,9 @@ namespace samurai {
    * so that it can be employed also elsewhere (e.g. boundary conditions for scalar fields)
    */
   #ifdef ORDER_2
-    inline constexpr std::size_t flux_stencil_size = 4;
+    inline static constexpr std::size_t flux_stencil_size = 4;
   #else
-    inline constexpr std::size_t flux_stencil_size = 2;
+    inline static constexpr std::size_t flux_stencil_size = 2;
   #endif
 
   /**

@@ -58,6 +58,7 @@ int main(int argc, char* argv[]) {
   sim_param.rtol_Newton      = input.value("rtol_Newton", static_cast<Number>(1e-10));
   sim_param.max_Newton_iters = input.value("max_Newton_iters", static_cast<std::size_t>(60));
   sim_param.p_ref            = input.value("p_ref", static_cast<Number>(1e5));
+  sim_param.freeze_pI_Newton = input.value("freeze_pI_Newton", false);
 
   // MR parameters
   sim_param.min_level     = input.value("min-level", static_cast<std::size_t>(8));
@@ -125,13 +126,17 @@ int main(int argc, char* argv[]) {
   app.add_option("--p_ref", sim_param.p_ref,
                  "Reference pressure for termination criterion dual-time stepping")
                  ->capture_default_str()->group("Numerical parameters");
+  app.add_option("--freeze_pI_Newton", sim_param.freeze_pI_Newton,
+                 "Freeze the interfacial pressure in the Newton-based relaxation at its value "
+                 "at the first iteration of each cell")->capture_default_str()->group("Numerical parameters");
 
   // MR parameters
-  app.add_option("--min-level", sim_param.min_level, "Minimum level of the AMR")->capture_default_str()->group("AMR parameter");
-  app.add_option("--max-level", sim_param.max_level, "Maximum level of the AMR")->capture_default_str()->group("AMR parameter");
-  app.add_option("--MR_param", sim_param.MR_param, "Multiresolution parameter")->capture_default_str()->group("AMR parameter");
+  app.add_option("--min-level", sim_param.min_level, "Minimum level of the MR")->capture_default_str()->group("Mesh parameters");
+  app.add_option("--max-level", sim_param.max_level, "Maximum level of the MR")->capture_default_str()->group("Mesh parameters");
+  /*app.add_option("--MR_param", sim_param.MR_param,
+                   "Multiresolution parameter")->capture_default_str()->group("Multiresolution parameters");
   app.add_option("--MR_regularity", sim_param.MR_regularity,
-                 "Multiresolution regularity")->capture_default_str()->group("AMR parameter");
+                 "Multiresolution regularity")->capture_default_str()->group("Multiresolution parameters");*/
 
   // Output parameters
   app.add_option("--save-dir", sim_param.save_dir, "Output directory")->capture_default_str()->group("Output parameters");

@@ -45,6 +45,7 @@ namespace samurai {
      * @param max_Newton_iters_ maximum number of iterations for dual-time stepping
      * @param p_ref_ reference pressure for termination criterion
      * @param mass_transfer_NR_ flag to check whether mass transfer inside relaxation is desired
+     * @param freeze_pI_ flag to freeze the interfacial pressure at its value at the first Newton iteration of each cell
      */
     RelaxationOperator(const SG_EOS<Number>& EOS_phase_liq_,
                        const SG_EOS<Number>& EOS_phase_gas_,
@@ -59,7 +60,8 @@ namespace samurai {
                        const Number rtol_Newton_ = static_cast<Number>(1e-12),
                        const std::size_t max_Newton_iters_ = 60,
                        const Number p_ref_ = static_cast<Number>(1e5),
-                       const bool mass_transfer_NR_ = true);
+                       const bool mass_transfer_NR_ = true,
+                       const bool freeze_pI_ = false);
 
     /**
      * Perform a Newton step relaxation for a state vector
@@ -70,6 +72,7 @@ namespace samurai {
      * @param Newton_iterations number of Newton (dual-time stepping) iterations
      * @param grad_alpha_l gradient of large-scale volume fraction (unused here, it may serve in case mass-transfer location changes)
      * @param type_relaxation check if relaxation toward local Laplace law or toward pressure equilibrium
+     * @param pI_0 interfacial pressure at the first Newton iteration of each cell (used only if freeze_pI = true)
      */
     template<class Field_Scalar, class Field_Scalar_Unsigned, class Field_Vect>
     auto make_Newton_step_relaxation(const Field_Scalar& H,
@@ -78,7 +81,8 @@ namespace samurai {
                                      Field_Scalar_Unsigned& to_be_relaxed,
                                      Field_Scalar_Unsigned& Newton_iterations,
                                      Field_Vect& grad_alpha_l,
-                                     Field_Scalar_Unsigned& type_relaxation);
+                                     Field_Scalar_Unsigned& type_relaxation,
+                                     Field_Scalar& pI_0);
 
     /**
      * Perform an instantaneous pressure relaxation p_liq = p_g (linearization method Pelanti based)
@@ -124,6 +128,8 @@ namespace samurai {
     const std::size_t max_Newton_iters; /*!< Maximum number of Newton iterations */
     const Number      p_ref;            /*!< Reference pressure for termination criterion */
 
+    const bool freeze_pI; /*!< Freeze the interfacial pressure at its value at the first Newton iteration of each cell */
+
   private:
     bool mass_transfer_NR; /*!< Auxiliary flag to check whether mass transfer inside relaxation is desired */
 
@@ -146,12 +152,14 @@ namespace samurai {
                                                 const Number rtol_Newton_,
                                                 const std::size_t max_Newton_iters_,
                                                 const Number p_ref_,
-                                                const bool mass_transfer_NR_):
+                                                const bool mass_transfer_NR_,
+                                                const bool freeze_pI_):
     EOS_phase_liq(EOS_phase_liq_), EOS_phase_gas(EOS_phase_gas_), sigma(sigma_),
     Hmax(Hmax_), kappa(kappa_),
     alpha_d_max(alpha_d_max_), alpha_l_min(alpha_l_min_), alpha_l_max(alpha_l_max_),
     lambda(lambda_), atol_Newton(atol_Newton_), rtol_Newton(rtol_Newton_),
     max_Newton_iters(max_Newton_iters_), p_ref(p_ref_),
+    freeze_pI(freeze_pI_),
     mass_transfer_NR(mass_transfer_NR_) {}
 
   // Set the value of the flag to check whether relaxation has been applied
@@ -185,7 +193,8 @@ namespace samurai {
                                                               Field_Scalar_Unsigned& to_be_relaxed,
                                                               Field_Scalar_Unsigned& Newton_iterations,
                                                               Field_Vect& grad_alpha_l,
-                                                              Field_Scalar_Unsigned& type_relaxation) {
+                                                              Field_Scalar_Unsigned& type_relaxation,
+                                                              Field_Scalar& pI_0) {
     auto relaxation_step = samurai::make_cell_based_scheme<typename RelaxationOperator::cfg>();
     relaxation_step.set_name("Relaxation");
     relaxation_step.set_scheme_function([&](samurai::SchemeValue<cfg>& result, const auto& cell, const auto& field)
@@ -228,7 +237,7 @@ namespace samurai {
 
                                              const auto rho_loc     = m_liq_loc + m_g_loc;
                                              const auto inv_rho_loc = static_cast<Number>(1.0)/rho_loc;
-                                             
+
                                              const auto Y_liq_loc   = m_liq_loc*inv_rho_loc;
                                              const auto chi_liq_loc = Y_liq_loc;
                                              const auto e_liq_loc   = mliqeliq_loc/m_liq_loc
@@ -293,7 +302,16 @@ namespace samurai {
                                                                   delta_p : F_LS + F_SS;
 
                                              // Perform the relaxation only where really needed
-                                             /* TO DO: How to modify the termination criterion? */
+                                             /* NOTE: The stagnation check on dalpha_l is relative to the smallest volume fraction:
+                                                      since dalpha_l ~ min(alpha_liq/(rho c^2)_liq, alpha_g/(rho c^2)_g)*delta_p,
+                                                      an absolute threshold would stop residual-phase cells
+                                                      (e.g. alpha_l ~ 1e-8) after one iteration, possibly far from equilibrium.
+                                                      Recall that alpha_g*alpha_l/alpha_liq is the variation of alpha_l
+                                                      which empties the gas phase
+                                                      A way to avoid it would be to use a relative threshold, such as
+                                                      alpha_l_scale = std::min(alpha_l_loc, alpha_g_loc*alpha_l_loc/alpha_liq_loc);
+                                                      std::abs(dalpha_l_loc) > rtol_Newton*alpha_l_scale
+                                                      but it is probably too restrictive. */
                                              if((std::abs(F) > atol_Newton + rtol_Newton*((type_relaxation[cell] == PRESSURE_EQUILIBRIUM)?
                                                                                           p_ref :
                                                                                           std::min(p_ref, sigma*std::abs(H_lim))) &&
@@ -370,7 +388,7 @@ namespace samurai {
 
                                                // Auxiliary partial derivatives
                                                // (for PRESSURE_EQUILIBRIUM F = delta_p, so dF = ddelta_p; they do not
-                                               //  contribute anyway since dH = 0 implies r_ml = B_liq = B_g = 0, i.e. R = 0)
+                                               // contribute anyway since dH = 0 implies r_ml = B_liq = B_g = 0, i.e. R = 0)
                                                const auto ddelta_p_drhoz = -sigma*inv_rho_loc*
                                                                            std::cbrt(inv_rho_liq_loc*inv_rho_liq_loc)*
                                                                            rho_Gamma_jump;
@@ -415,8 +433,27 @@ namespace samurai {
                                                // Auxiliary definitions
                                                const auto r_ml = -m_l_loc*sigma*dH;
 
-                                               const auto pI_loc = chi_liq_loc*p_g_loc + chi_g_loc*p_liq_loc;
-                                                                   /* NOTE: Valid assuming \partial_{\alpha_g}\chi_{g} = 0 */
+                                               /* NOTE: Acoustic-impedance weighted interfacial pressure
+                                                        (as in the instantaneous relaxation) seem to perform better,
+                                                        but this choice is not consistent with the thermodynamic properties. */
+                                               const auto Z_liq_loc = rho_liq_loc*c_liq_loc;
+                                               const auto Z_g_loc   = rho_g_loc*c_g_loc;
+                                               const auto pI_k_loc  = (Z_g_loc*p_liq_loc + Z_liq_loc*p_g_loc)/(Z_liq_loc + Z_g_loc);
+                                               /* NOTE: This choice is made to ensure that the interfacial pressure
+                                                        is consistent with the thermodynamic properties, but it seems to be
+                                                        problematic (at least for sigma = 0).
+                                                        With chi_k = Y_k one has pI ~ p_liq in gas-dominated cells,
+                                                        so that residual liquid is relaxed with no dissipation.
+                                               const auto pI_k_loc = chi_liq_loc*p_g_loc + chi_g_loc*p_liq_loc;
+                                                                     NOTE: Valid assuming \partial_{\alpha_g}\chi_{g} = 0 */
+
+                                               // Optionally freeze pI at its value at the first Newton iteration of the cell.
+                                               // This is a rectangle rule for the interfacial work: the instantaneous relaxation
+                                               // uses instead the trapezoidal rule with the average of pI_0 and p_star
+                                               if(freeze_pI && Newton_iterations[cell] == 1) {
+                                                 pI_0[cell] = pI_k_loc;
+                                               }
+                                               const auto pI_loc = freeze_pI ? pI_0[cell] : pI_k_loc;
                                                const auto B_liq  = -pI_loc*alpha_liq_loc*sigma*dH
                                                                  + Y_liq_loc*(fac_T*sigma*alpha_l_loc*dH*fac_Ru);
                                                const auto B_g    = pI_loc*alpha_liq_loc*sigma*dH
@@ -722,12 +759,10 @@ namespace samurai {
                                              const auto rho_liq_loc = m_liq_loc/alpha_liq_loc;
                                                                       // TODO: Add a check in case of zero volume fraction
                                              const auto p_liq_loc   = EOS_phase_liq.pres_value_Rhoe(rho_liq_loc, e_liq_0_loc);
-                                             const auto c_liq_loc   = EOS_phase_liq.c_value_RhoP(rho_liq_loc, p_liq_loc);
 
                                              const auto rho_g_loc = m_g_loc/alpha_g_loc;
                                                                     // TODO: Add a check in case of zero volume fraction
                                              const auto p_g_loc   = EOS_phase_gas.pres_value_Rhoe(rho_g_loc, e_g_0_loc);
-                                             const auto c_g_loc   = EOS_phase_gas.c_value_RhoP(rho_g_loc, p_g_loc);
 
                                              // Compute the pressure equilibrium with the linearization method (Pelanti)
                                              const auto gamma_liq    = EOS_phase_liq.get_gamma();
@@ -738,9 +773,16 @@ namespace samurai {
                                              const auto a     = static_cast<Number>(1.0)
                                                               + gamma_g*alpha_liq_loc
                                                               + gamma_liq*alpha_g_loc;
-                                             const auto Z_liq = rho_liq_loc*c_liq_loc;
-                                             const auto Z_g   = rho_g_loc*c_g_loc;
-                                             const auto pI_0  = (Z_g*p_liq_loc + Z_liq*p_g_loc)/(Z_liq + Z_g);
+                                             // Acoustic-impedance weighted interfacial pressure
+                                             const auto c_liq_loc = EOS_phase_liq.c_value_RhoP(rho_liq_loc, p_liq_loc);
+                                             const auto c_g_loc   = EOS_phase_gas.c_value_RhoP(rho_g_loc, p_g_loc);
+                                             const auto Z_liq     = rho_liq_loc*c_liq_loc;
+                                             const auto Z_g       = rho_g_loc*c_g_loc;
+                                             const auto pI_0      = (Z_g*p_liq_loc + Z_liq*p_g_loc)/(Z_liq + Z_g);
+                                             /* NOTE: Same interfacial pressure as in the Newton step (chi_k = Y_k)
+                                             const auto Y_liq_loc = m_liq_loc/(m_liq_loc + m_g_loc);
+                                             const auto pI_0      = Y_liq_loc*p_g_loc
+                                                                  + (static_cast<Number>(1.0) - Y_liq_loc)*p_liq_loc;*/
                                              const auto C_liq = static_cast<Number>(2.0)*gamma_liq*pi_infty_liq
                                                               + (gamma_liq - static_cast<Number>(1.0))*pI_0;
                                              const auto C_g   = static_cast<Number>(2.0)*gamma_g*pi_infty_g

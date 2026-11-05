@@ -24,6 +24,7 @@ struct Simulation_Parameters {
 
   bool apply_relaxation;
   bool instantaneous_relaxation;
+  bool freeze_pI_Newton;
   bool mass_transfer;
   T    Hmax;
   T    kappa;

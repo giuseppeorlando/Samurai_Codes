@@ -208,7 +208,8 @@ private:
   /*--- Now we declare a bunch of fields which depend from the state, but it is useful
         to have it so as to avoid recomputation ---*/
   Field_Scalar alpha_l,
-               dalpha_l;
+               dalpha_l,
+               pI_0; // Interfacial pressure at the first Newton iteration (used only if freeze_pI_Newton = true)
 
   Field_Vect normal,
              grad_alpha_l;
@@ -345,7 +346,8 @@ TwoScaleCapillarity<dim>::TwoScaleCapillarity(const xt::xtensor_fixed<double, xt
                       sim_param.Hmax, sim_param.kappa,
                       alpha_d_max, alpha_l_min, alpha_l_max,
                       sim_param.lambda, sim_param.atol_Newton, sim_param.rtol_Newton,
-                      max_Newton_iters, sim_param.p_ref),
+                      max_Newton_iters, sim_param.p_ref,
+                      true, sim_param.freeze_pI_Newton),
   path(sim_param.save_dir),
   gradient(samurai::make_gradient_order2<Field_Scalar>()),
   divergence(samurai::make_divergence_order2<Field_Vect>())
@@ -424,6 +426,7 @@ void TwoScaleCapillarity<dim>::create_fields() {
   H            = samurai::make_scalar_field<Number>("H", mesh);
 
   dalpha_l = samurai::make_scalar_field<Number>("dalpha_l", mesh);
+  pI_0     = samurai::make_scalar_field<Number>("pI_0", mesh);
 
   aux_fields.rho_liq = samurai::make_scalar_field<Number>("rho_liq", mesh);
   aux_fields.p_liq   = samurai::make_scalar_field<Number>("p_liq", mesh);
@@ -458,6 +461,7 @@ void TwoScaleCapillarity<dim>::resize_all_fields() {
   normal.resize();
   H.resize();
   dalpha_l.resize();
+  pI_0.resize();
   aux_fields.rho_liq.resize();
   aux_fields.p_liq.resize();
   aux_fields.T_liq.resize();
@@ -1193,7 +1197,7 @@ void TwoScaleCapillarity<dim>::run(const std::string& num_flux_hyp,
   auto numerical_flux_st = SurfaceTension_flux.make_two_scale_capillarity();
   auto relaxation_op = Relaxation_operator.make_Newton_step_relaxation(H, dalpha_l, alpha_l,
                                                                        to_be_relaxed, Newton_iterations,
-                                                                       grad_alpha_l, type_relaxation);
+                                                                       grad_alpha_l, type_relaxation, pI_0);
   auto inst_relaxation_op = Relaxation_operator.make_instantaneous_pressure_relaxation(alpha_l);
 
   // Save the initial condition
@@ -1281,6 +1285,7 @@ void TwoScaleCapillarity<dim>::run(const std::string& num_flux_hyp,
     if(apply_relax) {
       // Apply relaxation if desired, which will modify alpha_l (as well as grad_alpha_l).
       dalpha_l.resize();
+      pI_0.resize();
       to_be_relaxed.resize();
       Newton_iterations.resize();
       type_relaxation.resize();
