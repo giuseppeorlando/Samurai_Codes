@@ -932,7 +932,8 @@ void TwoScaleCapillarity<dim>::apply_relaxation(auto& relaxation_op) {
   // Loop of Newton method. Conceptually, a loop over cells followed by a Newton loop
   // over each cell would (could?) be more logic, but this would lead to issues to call 'update_geometry'
   bool global_relaxation_applied;
-  for(std::size_t Newton_iter = 1; Newton_iter <= max_Newton_iters; ++Newton_iter) {
+  std::size_t Newton_iter;
+  for(Newton_iter = 1; Newton_iter <= max_Newton_iters; ++Newton_iter) {
     Relaxation_operator.set_relaxation_applied(false);
 
     try {
@@ -949,7 +950,12 @@ void TwoScaleCapillarity<dim>::apply_relaxation(auto& relaxation_op) {
     }
 
     // Recompute geometric quantities (curvature potentially changed in the Newton loop)
-    update_geometry();
+    if(Newton_iter < max_Newton_iters/2) {
+      update_geometry();
+    }
+    else {
+      Relaxation_operator.set_mass_transfer_NR(false);
+    }
 
     // Check if we converged: reduce in case of MPI
     const bool local_relaxation_applied = Relaxation_operator.get_relaxation_applied();
@@ -973,6 +979,14 @@ void TwoScaleCapillarity<dim>::apply_relaxation(auto& relaxation_op) {
          dalpha_l, grad_alpha_l, normal, H,
          to_be_relaxed, Newton_iterations, type_relaxation);
     exit(1);
+  }
+
+  // Recompute geometric quantities in case update of curvature has been disabled
+  // to achieve convergence. This is useful mainly for postprocessing purposes
+  // so as to have large-scale volume fraction gradient and curvature computed
+  // with the final computed volume fraction
+  if(Newton_iter >= max_Newton_iters/2) {
+    update_geometry();
   }
 }
 

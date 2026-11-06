@@ -6,7 +6,7 @@
 
  "Tf": 0.125,
 
- "sigma": 0.0,
+ "sigma": 1e-2,
 
  "apply_relaxation": true,
  "mass_transfer": false,
