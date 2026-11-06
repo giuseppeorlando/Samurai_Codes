@@ -436,16 +436,16 @@ namespace samurai {
                                                /* NOTE: Acoustic-impedance weighted interfacial pressure
                                                         (as in the instantaneous relaxation) seem to perform better,
                                                         but this choice is not consistent with the thermodynamic properties. */
-                                               const auto Z_liq_loc = rho_liq_loc*c_liq_loc;
+                                               /*const auto Z_liq_loc = rho_liq_loc*c_liq_loc;
                                                const auto Z_g_loc   = rho_g_loc*c_g_loc;
-                                               const auto pI_k_loc  = (Z_g_loc*p_liq_loc + Z_liq_loc*p_g_loc)/(Z_liq_loc + Z_g_loc);
+                                               const auto pI_k_loc  = (Z_g_loc*p_liq_loc + Z_liq_loc*p_g_loc)/(Z_liq_loc + Z_g_loc);*/
                                                /* NOTE: This choice is made to ensure that the interfacial pressure
                                                         is consistent with the thermodynamic properties, but it seems to be
                                                         problematic (at least for sigma = 0).
                                                         With chi_k = Y_k one has pI ~ p_liq in gas-dominated cells,
-                                                        so that residual liquid is relaxed with no dissipation.
+                                                        so that residual liquid is relaxed with no dissipation.*/
                                                const auto pI_k_loc = chi_liq_loc*p_g_loc + chi_g_loc*p_liq_loc;
-                                                                     NOTE: Valid assuming \partial_{\alpha_g}\chi_{g} = 0 */
+                                                                     /*NOTE: Valid assuming \partial_{\alpha_g}\chi_{g} = 0 */
 
                                                // Optionally freeze pI at its value at the first Newton iteration of the cell.
                                                // This is a rectangle rule for the interfacial work: the instantaneous relaxation
