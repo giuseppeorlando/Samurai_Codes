@@ -774,15 +774,15 @@ namespace samurai {
                                                               + gamma_g*alpha_liq_loc
                                                               + gamma_liq*alpha_g_loc;
                                              // Acoustic-impedance weighted interfacial pressure
-                                             const auto c_liq_loc = EOS_phase_liq.c_value_RhoP(rho_liq_loc, p_liq_loc);
+                                             /*const auto c_liq_loc = EOS_phase_liq.c_value_RhoP(rho_liq_loc, p_liq_loc);
                                              const auto c_g_loc   = EOS_phase_gas.c_value_RhoP(rho_g_loc, p_g_loc);
                                              const auto Z_liq     = rho_liq_loc*c_liq_loc;
                                              const auto Z_g       = rho_g_loc*c_g_loc;
-                                             const auto pI_0      = (Z_g*p_liq_loc + Z_liq*p_g_loc)/(Z_liq + Z_g);
-                                             /* NOTE: Same interfacial pressure as in the Newton step (chi_k = Y_k)
+                                             const auto pI_0      = (Z_g*p_liq_loc + Z_liq*p_g_loc)/(Z_liq + Z_g);*/
+                                             /* NOTE: Same interfacial pressure as in the Newton step (chi_k = Y_k) */
                                              const auto Y_liq_loc = m_liq_loc/(m_liq_loc + m_g_loc);
                                              const auto pI_0      = Y_liq_loc*p_g_loc
-                                                                  + (static_cast<Number>(1.0) - Y_liq_loc)*p_liq_loc;*/
+                                                                  + (static_cast<Number>(1.0) - Y_liq_loc)*p_liq_loc;
                                              const auto C_liq = static_cast<Number>(2.0)*gamma_liq*pi_infty_liq
                                                               + (gamma_liq - static_cast<Number>(1.0))*pI_0;
                                              const auto C_g   = static_cast<Number>(2.0)*gamma_g*pi_infty_g
