@@ -433,19 +433,19 @@ namespace samurai {
                                                // Auxiliary definitions
                                                const auto r_ml = -m_l_loc*sigma*dH;
 
-                                               /* NOTE: Acoustic-impedance weighted interfacial pressure
-                                                        (as in the instantaneous relaxation) seem to perform better,
-                                                        but this choice is not consistent with the thermodynamic properties. */
-                                               /*const auto Z_liq_loc = rho_liq_loc*c_liq_loc;
-                                               const auto Z_g_loc   = rho_g_loc*c_g_loc;
-                                               const auto pI_k_loc  = (Z_g_loc*p_liq_loc + Z_liq_loc*p_g_loc)/(Z_liq_loc + Z_g_loc);*/
                                                /* NOTE: This choice is made to ensure that the interfacial pressure
                                                         is consistent with the thermodynamic properties, but it seems to be
-                                                        problematic (at least for sigma = 0).
+                                                        problematic.
                                                         With chi_k = Y_k one has pI ~ p_liq in gas-dominated cells,
                                                         so that residual liquid is relaxed with no dissipation.*/
                                                const auto pI_k_loc = chi_liq_loc*p_g_loc + chi_g_loc*p_liq_loc;
                                                                      /*NOTE: Valid assuming \partial_{\alpha_g}\chi_{g} = 0 */
+                                               /* NOTE: Acoustic-impedance weighted interfacial pressure
+                                                        (as in the instantaneous relaxation) seem to perform better,
+                                                        but this choice is not consistent with the thermodynamic properties. */
+                                                /*const auto Z_liq_loc = rho_liq_loc*c_liq_loc;
+                                                const auto Z_g_loc   = rho_g_loc*c_g_loc;
+                                                const auto pI_k_loc  = (Z_g_loc*p_liq_loc + Z_liq_loc*p_g_loc)/(Z_liq_loc + Z_g_loc);*/
 
                                                // Optionally freeze pI at its value at the first Newton iteration of the cell.
                                                // This is a rectangle rule for the interfacial work: the instantaneous relaxation
@@ -683,11 +683,11 @@ namespace samurai {
                                              const auto m_d_loc_res       = result(Md_INDEX);
                                              const auto m_l_loc_res       = result(Ml_INDEX);
                                              const auto m_liq_loc_res     = m_l_loc_res + m_d_loc_res;
-                                             const auto m_g_loc_res       = result(Mg_INDEX);
-                                             const auto rho_loc_res       = m_liq_loc_res + m_g_loc_res;
                                              /* NOTE: This is in principle equal to m_liq_loc computed at the beginning
                                                       of the relaxation but, for the sake of coherence, and to avoid any
                                                       round-off effect we take the final value */
+                                             const auto m_g_loc_res       = result(Mg_INDEX);
+                                             const auto rho_loc_res       = m_liq_loc_res + m_g_loc_res;
                                              const auto alpha_d_loc_res   = alpha_l_loc*m_d_loc_res/m_l_loc_res;
                                                                             // TODO: Add a check in case of zero volume fraction
                                              const auto alpha_liq_loc_res = alpha_l_loc + alpha_d_loc_res;
