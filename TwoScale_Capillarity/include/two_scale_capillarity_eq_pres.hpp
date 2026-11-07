@@ -738,6 +738,11 @@ void TwoScaleCapillarity<dim>::check_data(unsigned flag) {
                                 exit(1);
                               }
 
+                              // Sanity check for alpha2
+                              check_positive_field((static_cast<Number>(1.0) - alpha1_bar_loc)*
+                                                   (static_cast<Number>(1.0) - alpha1_d_loc), cell,
+                                                   "volume fraction phase 2 ");
+
                               // Sanity check for Sigma_d
                               check_positive_field(local_conserved_variables(SIGMA_D_INDEX), cell,
                                                    "small-scale interfacial area ");

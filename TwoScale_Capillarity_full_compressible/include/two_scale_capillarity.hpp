@@ -652,6 +652,13 @@ void TwoScaleCapillarity<dim>::check_data(unsigned flag) {
                               check_positive_field(local_conserved_variables(Md_INDEX), cell,
                                                    "mass small-scale liquid ");
 
+                              // Sanity check for alpha_g
+                              check_positive_field(static_cast<Number>(1.0) -
+                                                   alpha_l_loc*(static_cast<Number>(1.0) +
+                                                                local_conserved_variables(Md_INDEX)/
+                                                                local_conserved_variables(Ml_INDEX)), cell,
+                                                   "volume fraction gas phase ");
+
                               // Sanity check for z (the transported variable related to small-scale IAD)
                               check_positive_field(local_conserved_variables(RHO_Z_INDEX), cell,
                                                    "interface area small-scale liquid ");
